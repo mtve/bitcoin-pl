@@ -12,7 +12,7 @@ Features:
 
 Todo:
 - much more testing
-- switch to chain branch
+- chain branches
 - add key management and money transfer
 - fix serialize.pm for "32-bit perl"
 
