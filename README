@@ -1,6 +1,6 @@
 About
 =====
-BitCoin implemented in perl, meant to be portable
+BitCoin implemented in perl, meant to be portable.
 
 Usage:
     perl bitcoin.pl
@@ -50,4 +50,3 @@ ping ()
 	+ ping
 subscribe (int, int)
 	? only sent, never processed
-
