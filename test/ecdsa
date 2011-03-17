@@ -1,0 +1,92 @@
+#! /usr/bin/perl
+BEGIN { chdir '..' }
+
+use warnings;
+use strict;
+
+use ecdsa;
+
+my $a = 'MHQCAQEEIB/XzR7ZwDT4cvFZT7FB6GKUcrHF8eIxu2bNesEG31mMoAcGBSuBBAAK
+oUQDQgAEysVpdLC81+NVHY1S7Xm96xsl5D983TztFRkTE7VFqudWMj8q9Lww1TK/
+NNoNBje/F+Uy0i+KnwXzfGcpBpkD+Q==
+';
+my $b = ecdsa::base64_decode ($a);
+my $c = ecdsa::base64_encode ($b);
+$a eq $c or die;
+
+my %base64 = (
+'Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure.' =>
+'TWFuIGlzIGRpc3Rpbmd1aXNoZWQsIG5vdCBvbmx5IGJ5IGhpcyByZWFzb24sIGJ1
+dCBieSB0aGlzIHNpbmd1bGFyIHBhc3Npb24gZnJvbSBvdGhlciBhbmltYWxzLCB3
+aGljaCBpcyBhIGx1c3Qgb2YgdGhlIG1pbmQsIHRoYXQgYnkgYSBwZXJzZXZlcmFu
+Y2Ugb2YgZGVsaWdodCBpbiB0aGUgY29udGludWVkIGFuZCBpbmRlZmF0aWdhYmxl
+IGdlbmVyYXRpb24gb2Yga25vd2xlZGdlLCBleGNlZWRzIHRoZSBzaG9ydCB2ZWhl
+bWVuY2Ugb2YgYW55IGNhcm5hbCBwbGVhc3VyZS4=
+',
+'sure.'	=> "c3VyZS4=\n",
+'sure'	=> "c3VyZQ==\n",
+'sur'	=> "c3Vy\n",
+'su'	=> "c3U=\n",
+'leasure.'	=> "bGVhc3VyZS4=\n",
+'easure.'	=> "ZWFzdXJlLg==\n",
+'asure.'	=> "YXN1cmUu\n",
+'sure.'		=> "c3VyZS4=\n",
+);
+
+for (keys %base64) {
+	my $y = ecdsa::base64_decode ($base64{$_});
+	$y eq $_ or die $y;
+
+	my $z = ecdsa::base64_encode ($_);
+	$z eq $base64{$_} or die $z;
+}
+print "ok\n";
+
+
+my $pem = <<EOF;
+-----BEGIN EC PRIVATE KEY-----
+MHQCAQEEIAewILDa42TEAAdK9cJ2EZCVCmQbUKautyvnJwhxAxiqoAcGBSuBBAAK
+oUQDQgAET2Qy/ugDyyueihCNXCxmuK8QXTiKEwCO8tUritUM/rP/PNWTf4o3C5G6
+9caIMryCLxDZnLPpTHPdOOs0lO2KNg==
+-----END EC PRIVATE KEY-----
+EOF
+
+my $key1 = ecdsa::pem_parse_priv ($pem);
+my $pem2 = ecdsa::pem_make_priv ($key1);
+
+$pem eq $pem2
+	or die "wtf\n$pem2";
+print "ok\n";
+
+my $key3 = { pub => scalar reverse pack 'H*',
+	'5F1DF16B2B704C8A578D0BBAF74D385CDE12C11EE50455F3C438EF4C3FBCF649' .
+	'B6DE611FEAE06279A60939E028A8D65C10B73071A6F16719274855FEB0FD8A6704'
+};
+
+my $key = ecdsa::GenKey ();
+
+#rename "var/key.tmp", "var/key.tmp2" or die;
+
+#exit print length $key->{priv}, "\n", length $key->{pub}, "\n";
+
+my $sig = ecdsa::Sign ($key, 'yo');
+ecdsa::Verify ($key3, 'yo', $sig) and die;
+ecdsa::Verify ($key, 'yo', $sig) or die;
+print "ok\n";
+
+#print "\npub: " . unpack 'H*', $key->{pub};
+#print "\npriv: " . unpack 'H*', $key->{priv};
+#print "\nsig: " . unpack 'H*', $sig;
+
+0 && print ecdsa::asn_decode (ecdsa::base64_decode (<<EOF));
+MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAESfBM/gF9alagjXpQpYSkdpgqLbB4+c/p
+/kPIpoBarLg/YN4YdkBCBywikj/DGtWsl2fczEyPURWEmvGlVziMpg==
+EOF
+
+0 && print ecdsa::asn_decode join '', map chr hex, '
+30 45 02 21 00 9b df b5  bd 4f f6 7c 35 2c bb 0e
+b7 3a d6 52 f9 5a 0d 50  77 92 44 73 aa 5a a9 23
+4b ae 04 e3 7f 02 20 2e  c1 11 99 5f 36 01 1b 8e
+83 f1 eb b9 22 66 7a 62  10 96 80 fb 71 d6 a2 79
+fc 2f d7 81 ae 59 9e
+' =~ /\S\S/g;

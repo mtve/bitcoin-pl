@@ -1,0 +1,32 @@
+#! /usr/bin/perl
+BEGIN { chdir '..' }
+
+use warnings;
+use strict;
+
+use base58;
+
+my $a = '2a96AezpWz3sNt';
+my $b = base58::DecodeBase58Check ($a);
+my $c = base58::EncodeBase58Check ($b);
+
+$a eq $c or die $c;
+print "ok\n";
+
+my %vec = (
+	''	=>
+'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+	'The quick brown fox jumps over the lazy dog' =>
+'d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592',
+);
+for (keys %vec) {
+	unpack ('H*', base58::sha256 ($_)) eq $vec{$_} or die $_;
+	print "ok\n";
+}
+
+$a = '1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2';		# for donations :)
+$b = base58::AddressToHash160 ($a);
+$c = base58::Hash160ToAddress ($b);
+
+$a eq $c or die $c;
+print "ok\n";

@@ -1,0 +1,41 @@
+About
+=====
+BitCoin implemented in perl, meant to be portable
+
+License
+=======
+Do what you want license
+
+Bitcoin wire protocol
+=====================
+version (...)
+	+ hello
+getaddr ()
+	+ get addresses of last 5 days
+addr ({CAddress})
+	+ new address announce 
+getblocks (CBlockLocator, uint256)
+	- asnwered with "inv"
+getdata ({CInv})
+	+ get blocks, answered with "block" and maybe last with "inv"
+block (CBlock)
+	+ requested block
+tx (CTransaction)
+	+ new tx announce
+inv ({CInv})
+	+ new hash of tx/block announce
+checkorder (uint256, CWalletTx)
+	- direct request for pubkey, answered with "reply"
+submitorder (uint256, CWalletTx)
+	- new?
+reply (uint256 hashReply, int, ...)
+	- reply
+ping ()
+	+ ping
+subscribe (int, int)
+	? only sent, never processed
+
+TODO
+====
+- Fix serialize.pm for "32-bit perl"
+
