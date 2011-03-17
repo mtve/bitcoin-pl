@@ -5,6 +5,8 @@ BitCoin implemented in perl, meant to be portable
 Usage:
     perl bitcoin.pl
 
+It's in the development state, so everything can be changed.
+
 Features:
 - web interface
 - data stored in sql via DBI (sqlite by default)
