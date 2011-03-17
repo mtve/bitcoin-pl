@@ -8,9 +8,11 @@ Usage:
 Features:
 - web interface
 - data stored in sql via DBI (sqlite by default)
-- download blockchain
+- blockchain download
 
 Todo:
+- much more testing
+- switch to chain branch
 - add key management and money transfer
 - fix serialize.pm for "32-bit perl"
 
