@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use DBI;
 
-my $DBI_ARG1 = "dbi:SQLite:dbname=var/db";
+my $DBI_ARG1 = 'dbi:SQLite:dbname=var/db';
 my $DBI_ARG2 = '';
 my $DBI_ARG3 = '';
 
