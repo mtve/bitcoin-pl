@@ -358,10 +358,15 @@ sub CheckBlock {
 	die "hashMerkleRoot mismatch"
 		if $blk->{hashMerkleRoot} ne BuildMerkleTree ($blk->{vtx});
 
-	my $prev = data::blk_load ($blk->{hashPrevBlock});
-	$blk->{nHeight} = $prev ? $prev->{nHeight} + 1 : -1;
-	$blk->{mainBranch} = $prev && $prev->{mainBranch} &&
-	    $blk->{nHeight} > $nBestHeight ? 1 : 0;
+	if ($blk_h eq $GenesisHash) {
+		$blk->{nHeight} = 0;
+		$blk->{mainBranch} = 1;
+	} else {
+		my $prev = data::blk_load ($blk->{hashPrevBlock}) or die;
+		$blk->{nHeight} = $prev->{nHeight} + 1;
+		$blk->{mainBranch} = $prev->{mainBranch} &&
+		    $blk->{nHeight} > $nBestHeight ? 1 : 0;
+	}
 
 	if (!$blk->{mainBranch} && $blk->{nHeight} > $nBestHeight) {
 		die "new main branch is not implemented";
@@ -420,7 +425,7 @@ sub ProcessBlock {
 	}
 
 	my $prev_h = $blk->{hashPrevBlock};
-	if (!data::blk_load ($prev_h)) {
+	if ($blk_h ne $GenesisHash && !data::blk_load ($prev_h)) {
 		data::orphan_ins ($blk_h);	# ?? prev? XXX
 		warn "orphaned block $H{$blk_h}";
 		return;
@@ -460,9 +465,6 @@ sub GenesisBlock {
 		nBits		=> 0x1d00ffff,
 		nNonce		=> 2083236893,
 		vtx		=> [ $tx0 ],
-
-		nHeight		=> 0,
-		mainBranch	=> 1,
 	};
 
 	$blk0->{hashMerkleRoot} eq $GenesisMerkleRoot
@@ -474,10 +476,7 @@ sub GenesisBlock {
 }
 
 sub init () {
-	if (!data::blk_load ($GenesisHash)) {
-		warn "adding genesis\n";
-		AddBlock (GenesisBlock (), $GenesisHash);
-	}
+	ProcessBlock (GenesisBlock ());
 }
 
 #

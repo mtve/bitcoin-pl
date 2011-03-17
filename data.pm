@@ -15,35 +15,35 @@ my $SCRIPT = <<SQL;
 
 CREATE TABLE IF NOT EXISTS key (
 	pub		BLOB PRIMARY KEY,
-	priv		BLOB,
-	addr		STRING(50),
-	remark		STRING
+	priv		BLOB NOT NULL,
+	addr		STRING(50) NOT NULL,
+	remark		STRING NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tx (
 	hash		BLOB(32) PRIMARY KEY,
-	nLockTime	INTEGER
+	nLockTime	INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tx_in (
-	tx_hash		BLOB(32),
-	tx_n		INTEGER,
-	prev_hash	BLOB(32),
-	prev_n		INTEGER,
-	scriptSig	BLOB,
-	nSequence	INTEGER
+	tx_hash		BLOB(32) NOT NULL,
+	tx_n		INTEGER NOT NULL,
+	prev_hash	BLOB(32) NOT NULL,
+	prev_n		INTEGER NOT NULL,
+	scriptSig	BLOB NOT NULL,
+	nSequence	INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS tx_in_idx
 	ON tx_in (tx_hash, tx_n);
 
 CREATE TABLE IF NOT EXISTS tx_out (
-	tx_hash		BLOB(32),
-	tx_n		INTEGER,
-	nValue		INTEGER,
-	scriptPubKey	BLOB,
-	addr		STRING(50),
-	spentHeight	INTEGER
+	tx_hash		BLOB(32) NOT NULL,
+	tx_n		INTEGER NOT NULL,
+	nValue		INTEGER NOT NULL,
+	scriptPubKey	BLOB NOT NULL,
+	addr		STRING(50) NOT NULL,
+	spentHeight	INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS tx_out_idx
@@ -51,12 +51,12 @@ CREATE INDEX IF NOT EXISTS tx_out_idx
 
 CREATE TABLE IF NOT EXISTS blk (
 	hash		BLOB(32) PRIMARY KEY,
-	hashPrevblk	BLOB(32),
-	nTime		INTEGER,
-	nBits		INTEGER,
-	nNonce		INTEGER,
-	nHeight		INTEGER,
-	mainBranch	INTEGER
+	hashPrevBlock	BLOB(32) NOT NULL,
+	nTime		INTEGER NOT NULL,
+	nBits		INTEGER NOT NULL,
+	nNonce		INTEGER NOT NULL,
+	nHeight		INTEGER NOT NULL,
+	mainBranch	INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS blk_idx
@@ -67,12 +67,13 @@ CREATE TABLE IF NOT EXISTS orphan (
 );
 
 CREATE TABLE IF NOT EXISTS blk_tx (
-	blk_hash	BLOB(32),
-	blk_n		INTEGER,
-	tx_hash		BLOB(32)
+	blk_hash	BLOB(32) NOT NULL,
+	blk_n		INTEGER NOT NULL,
+	tx_hash		BLOB(32) NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS blk_tx_idx ON blk_tx (blk_hash);
+CREATE INDEX IF NOT EXISTS blk_tx_idx
+	ON blk_tx (blk_hash);
 
 SQL
 
@@ -192,7 +193,7 @@ sub blk_save {
 		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx}[$_]);
 	}
 	$sth{blk_ins}->execute ($blk_h, @$blk{qw(
-		hashPrevblk nTime nBits nNonce nHeight mainBranch
+		hashPrevBlock nTime nBits nNonce nHeight mainBranch
 	)});
 }
 

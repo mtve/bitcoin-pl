@@ -147,7 +147,7 @@ sub got_ping {
 sub PushGetBlocks {
 	my ($file, $hashStop) = @_;
 
-	my ($n, $h) = data::blk_best ();
+	my ($n, $h) = data::blk_best () or die "no best";
 
 	PushMessage ($file, 'getblocks', {
 		nVersion	=> $VERSION,
