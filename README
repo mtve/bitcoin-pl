@@ -2,6 +2,18 @@ About
 =====
 BitCoin implemented in perl, meant to be portable
 
+Usage:
+    perl bitcoin.pl
+
+Features:
+- web interface
+- data stored in sql via DBI (sqlite by default)
+- download blockchain
+
+Todo:
+- add key management and money transfer
+- fix serialize.pm for "32-bit perl"
+
 License
 =======
 Do what you want license
@@ -34,8 +46,4 @@ ping ()
 	+ ping
 subscribe (int, int)
 	? only sent, never processed
-
-TODO
-====
-- Fix serialize.pm for "32-bit perl"
 
