@@ -251,7 +251,7 @@ sub AddTransaction {
 	my ($tx, $tx_h) = @_;
 
 	D && warn "add tx $H{$tx_h}";
-	data::tx_save ($tx_h, $tx);
+	data::tx_save ($tx_h, $tx) if !data::tx_exists ($tx_h);
 }
 
 #
@@ -420,13 +420,13 @@ sub ProcessBlock {
 	my $blk_h = BlockHash ($blk);
 	D && warn "$H{$blk_h}";
 
-	if (data::blk_load ($blk_h)) {
+	if (data::blk_exists ($blk_h)) {
 		warn "already have block $H{$blk_h}";
 		return;
 	}
 
 	my $prev_h = $blk->{hashPrevBlock};
-	if ($blk_h ne $GenesisHash && !data::blk_load ($prev_h)) {
+	if ($blk_h ne $GenesisHash && !data::blk_exists ($prev_h)) {
 		data::orphan_ins ($blk_h);	# ?? prev? XXX
 		warn "orphaned block $H{$blk_h}";
 		return;

@@ -128,6 +128,12 @@ SELECT @row[1 .. $#row] FROM $table WHERE $row[0] = ?
 SQL
 
 		no strict 'refs';
+
+		*{"$table\_exists"} = sub {
+			$sth{"$table\_sel"}->execute ($_[0]);
+			return $sth{"$table\_sel"}->fetchrow_hashref;
+		};
+
 		*{"$table\_cnt"} = sub { $dbh->selectrow_array (<<SQL) };
 SELECT COUNT(*) FROM $table
 SQL
