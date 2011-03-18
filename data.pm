@@ -145,6 +145,7 @@ SQL
 sub tx_save {
 	my ($tx_h, $tx) = @_;
 
+	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime});
 	for (0 .. $#{ $tx->{vin} }) {
 		my $i = $tx->{vin}[$_];
 		$sth{tx_in_ins}->execute ($tx_h, $_, $i->{prevout}{hash},
@@ -156,7 +157,6 @@ sub tx_save {
 			nValue scriptPubKey addr spentHeight
 		)});
 	}
-	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime});
 }
 
 sub tx_load {
@@ -195,12 +195,12 @@ sub tx_out_spent {
 sub blk_save {
 	my ($blk_h, $blk) = @_;
 
-	for (0 .. $#{ $blk->{vtx} }) {
-		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx}[$_]);
-	}
 	$sth{blk_ins}->execute ($blk_h, @$blk{qw(
 		hashPrevBlock nTime nBits nNonce nHeight mainBranch
 	)});
+	for (0 .. $#{ $blk->{vtx} }) {
+		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx}[$_]);
+	}
 }
 
 sub blk_load {
@@ -251,6 +251,19 @@ sub key_load {
 
 sub key_save {
 	$sth{key_ins}->execute (@_);
+}
+
+sub sql {
+	my ($query, $max) = @_;
+
+	my $sth = $dbh->prepare ($query);
+	$sth->execute ();
+	my (@res, $h);
+	while (@res < $max && ($h = $sth->fetchrow_hashref)) {
+		push @res, $h;
+	}
+	$sth->finish;
+	return \@res;
 }
 
 END {

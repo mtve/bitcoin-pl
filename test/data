@@ -1,0 +1,12 @@
+#! /usr/bin/perl
+BEGIN { chdir '..' }
+
+use warnings;
+use strict;
+
+use data;
+
+data::init ();
+
+print "ok" if data::tx_exists (scalar reverse pack 'H*',
+'d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599');

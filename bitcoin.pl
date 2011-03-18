@@ -10,9 +10,8 @@ use web;
 use net;
 use event;
 
-$SIG{INT} = \&event::quit;
-
 print "welcome to bitcoin perl client v$web::VERSION\n";
+logger::rotate ();
 data::init ();
 main::init ();
 web::server (8899);

@@ -242,6 +242,7 @@ sub quit {
 }
 
 sub loop {
+	$SIG{INT} = \&quit;
 	warn "started\n";
 	loop_one () while !$quit;
 	warn "stopped\n";

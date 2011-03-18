@@ -32,6 +32,4 @@ sub PRINT {
 	    $h, $m, $s, (caller 1)[3] || '?', $msg;
 }
 
-rotate ();
-
 1;

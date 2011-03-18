@@ -3,13 +3,82 @@ package web;
 use warnings;
 use strict;
 use IO::Socket::INET;
+use Encode;
 
 use event;
 use main;
 use data;
 use logger;
 
-our $VERSION = '110317';
+our $VERSION = '110318';
+
+our $SQL_PAGE = 20;
+
+sub html_esc'TIEHASH { bless {}, $_[0] }
+
+sub html_esc'FETCH {
+	my (undef, $str) = @_;
+
+	s/&/&amp;/g, s/</&lt;/g, s/>/&gt;/g, s/"/&quot;/g for $str;
+	return $str;
+}
+
+tie my %H, 'html_esc';
+
+sub http_params {
+	my ($params) = @_;
+
+	my %par;
+	for (split /&/, $params) {
+		my ($a, $b) = /^([^=]*)=?(.*)\z/ or next;
+		y/+/ /, s/%([0-9a-f]{2})/pack 'C', hex $1/ieg
+			for $a, $b;
+		$par{$a} = decode ('utf8', $b);
+	}
+	return \%par;
+}
+
+sub page_sql {
+	my ($file) = @_;
+
+	my $html = '';
+	my $sql = $file->{http_param}{sql} || '';
+	if ($sql) {
+		my $res = eval { data::sql ($sql, $SQL_PAGE) };
+		if ($@) {
+			$html = <<HTML;
+<p><font color="#FF0000">Error: $H{$@}</font></p>
+HTML
+		} elsif (!@$res) {
+			$html = <<HTML;
+<p>No results.</p>
+HTML
+		} else {
+			my @col = sort keys %{ $res->[0] };
+			$html = <<HTML;
+<table border="1">
+<tr>@{[ map "<td><b>$H{$_}</b></td>", @col ]}</tr>
+HTML
+			$html .= <<HTML for @$res;
+<tr>@{[ map "<td>$H{$_ =~ /[^ -~]/ ? unpack 'H*', reverse : $_ }</td>",
+	@$_{@col} ]}</tr>
+HTML
+			$html .= <<HTML;
+</table>
+HTML
+		}
+	}
+
+	return <<HTML;
+<form action="/sql" method="get">
+<p>Free form SQL query (dangerous!) :
+<input type="text" name="sql" value="$H{$sql}">
+<input type="submit" value="Execute">
+</p>
+</form>
+$html
+HTML
+}
 
 sub page_about {
 	return <<HTML;
@@ -31,7 +100,7 @@ sub page_stop {
 }
 
 sub page {
-	my ($method, $uri) = @_;
+	my ($file) = @_;
 
 	my $blocks = $main::nBestHeight;
 	my $orphan = data::orphan_cnt ();
@@ -39,10 +108,11 @@ sub page {
 	my $keys = data::key_cnt ();
 
 	my $page = '';
-	if ($uri =~ /(\w+)(\?|\z)(.*)/) {
+	if ($file->{http_url} =~ /(\w+)(\?|\z)(.*)/) {
 		my $mvc = "page_$1";
 		no strict 'refs';
-		$page = $mvc->($2) if exists &$mvc;
+		$file->{http_param} = http_params ($3);
+		$page = $mvc->($file) if exists &$mvc;
 	}
 
 	return <<HTML;
@@ -57,6 +127,7 @@ Your addresses: <b>$keys</b></p>
 <a href="/">Main</a> |
 <a href="/rotate">Rotate log</a> |
 <a href="/stop">Stop</a> |
+<a href="/sql">SQL query</a> |
 <a href="/about">About</a>
 </p>
 $page
@@ -83,11 +154,11 @@ HTTP
 }
 
 sub request {
-	my ($method, $uri) = @_;
+	my ($file) = @_;
 
-	return favicon () if $uri =~ /favicon.ico\z/;
+	return favicon () if $file->{http_url} =~ /favicon.ico\z/;
 
-	my $html = page ($method, $uri);
+	my $html = page ($file);
 
 	return <<HTTP;
 HTTP/1.1 200 OK
@@ -114,10 +185,10 @@ sub http_incoming {
 
 	$head =~ s!^([a-z]+)\s+(\S+)\s+HTTP/1\.[01]\015?\012!!i
 		or die "bad request $head";
-	my ($method, $url) = ($1, $2);
-	warn "httpd $peerhost:@{[ $file->{fh}->peerport ]} $method $url";
+	@$file{qw( http_method http_url )} = ($1, $2);
+	warn "httpd $peerhost:@{[ $file->{fh}->peerport ]} $1 $2";
 
-	event::file_write ($file, request ($method, $url));
+	event::file_write ($file, request ($file));
 	event::file_close ($file);
 }
 
