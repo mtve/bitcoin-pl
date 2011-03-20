@@ -94,9 +94,10 @@ sub init {
 		AutoCommit	=> 0,
 	});
 
-	while ($SCRIPT =~ /\s*([^;]+)/g) {
+	while ($SCRIPT =~ /([^;]+)/g) {
 		my $str = $1;
-		$str =~ s/--.*//g;
+		s/--.*//g, s/^\s+//, s/\s+\z// for $str;
+		next if !$str;
 
 		$dbh->do ($str);
 
