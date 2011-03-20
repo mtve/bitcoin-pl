@@ -48,7 +48,7 @@ sub state_hdr {
 	D && warn "debug func=$file->{net_func} len=$file->{net_len}";
 	$file->{net_len} < 1_000_000
 		or die "message is too big";
-	goto $file->{has_crc} ? &state_crc : &state_msg;
+	$file->{has_crc} ? goto &state_crc : goto &state_msg;
 }
 
 sub state_crc {
@@ -145,14 +145,14 @@ sub got_ping {
 }
 
 sub PushGetBlocks {
-	my ($file, $hashStop) = @_;
+	my ($file) = @_;
 
 	my ($n, $h) = data::blk_best () or die "no best";
 
 	PushMessage ($file, 'getblocks', {
 		nVersion	=> $VERSION,
 		locator		=> [ $h ],
-		hashStop	=> $hashStop,
+		hashStop	=> $main::NULL256,
 	});
 }
 
@@ -165,7 +165,7 @@ sub got_verack {
 	$file->{has_crc} = 1;
 
 	D && warn "start downloading";
-	PushGetBlocks ($file, $main::NULL256);
+	PushGetBlocks ($file);
 }
 
 sub got_addr {
@@ -180,15 +180,19 @@ sub got_inv {
 	my ($file, $inv) = @_;
 
 	D && warn "debug";
-	for (@$inv) {
-		my $hex = unpack 'H*', $_->{hash};
-		$_->{type} == $MSG_TX    ? D && warn "inv tx $hex" :
-		$_->{type} == $MSG_BLOCK ? D && warn "inv block $hex" :
-			die "inv unknown type";
-	}
 
-	# XXX	
-	PushMessage ($file, 'getdata', $inv) if @$inv;
+	my $outv = [];
+	for (@$inv) {
+		my $h = $_->{hash};
+		if ($_->{type} == $MSG_TX) {
+			push @$outv, $_ if !data::tx_exists ($h);
+		} elsif ($_->{type} == $MSG_BLOCK) {
+			push @$outv, $_ if !data::blk_exists ($h);
+		} else {
+			die "inv unknown type $_->{type}";
+		}
+	}
+	PushMessage ($file, 'getdata', $outv) if @$outv;
 }
 
 sub got_block {
@@ -198,13 +202,7 @@ sub got_block {
 	$block->{nVersion} == 1
 		or die "bad version $block->{nVersion}";
 
-	main::ProcessBlock ($block);
-
-	my $orphan = data::orphan ();
-	if ($orphan) {
-		D && warn "continue downloading";
-		PushGetBlocks ($file, $orphan);
-	}
+	PushGetBlocks ($file) if !main::ProcessBlock ($block);
 }
 
 sub got_tx {

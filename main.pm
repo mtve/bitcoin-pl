@@ -402,7 +402,6 @@ sub AddBlock {
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
 		"block $H{$blk_h}";
 
-	data::orphan_del ($blk_h);
 	data::blk_save ($blk_h, $blk);
 
 	($nBestHeight) = data::blk_best () or die;
@@ -422,18 +421,18 @@ sub ProcessBlock {
 
 	if (data::blk_exists ($blk_h)) {
 		warn "already have block $H{$blk_h}";
-		return;
+		return 1;
 	}
 
 	my $prev_h = $blk->{hashPrevBlock};
 	if ($blk_h ne $GenesisHash && !data::blk_exists ($prev_h)) {
-		data::orphan_ins ($blk_h);	# ?? prev? XXX
-		warn "orphaned block $H{$blk_h}";
-		return;
+		warn "orphaned block $H{$blk_h}, continue downloading";
+		return 0;
 	}
 
 	CheckBlock ($blk, $blk_h);
 	AddBlock ($blk, $blk_h);
+	return 1;
 }
 
 sub GenesisBlock {

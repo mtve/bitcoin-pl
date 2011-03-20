@@ -16,6 +16,8 @@ Todo:
 - much more testing
 - chain branches
 - add key management and money transfer
+- full networking and multiple connections
+- getwork rpc for miners
 - fix serialize.pm for "32-bit perl"
 
 License
@@ -50,3 +52,5 @@ ping ()
 	+ ping
 subscribe (int, int)
 	? only sent, never processed
+
+see https://en.bitcoin.it/wiki/Protocol_specification

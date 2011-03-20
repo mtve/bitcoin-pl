@@ -10,7 +10,7 @@ use main;
 use data;
 use logger;
 
-our $VERSION = '110318';
+our $VERSION = '110320';
 
 our $SQL_PAGE = 20;
 
@@ -84,7 +84,7 @@ sub page_about {
 	return <<HTML;
 <p>Version $VERSION</p>
 <p>Project home is
-<a href="http://frox25.no-ip.org/~mtve/wiki/BitcoinPl.html">here</a></p>
+<a href="https://github.com/mtve/bitcoin-pl">here</a></p>
 <p>Address for donations is <b>1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2</b></p>
 </p>
 HTML
@@ -103,7 +103,6 @@ sub page {
 	my ($file) = @_;
 
 	my $blocks = $main::nBestHeight;
-	my $orphan = data::orphan_cnt ();
 	my $txs = data::tx_cnt ();
 	my $keys = data::key_cnt ();
 
@@ -117,10 +116,10 @@ sub page {
 
 	return <<HTML;
 <html><head>
-<title>Bitcoin perl client</title>
+<title>Bitcoin in perl</title>
 </head><body>
-<h3><a href="http://www.bitcoin.org">Bitcoin</a> perl client</h3>
-<p>Blocks: <b>$blocks</b> (orphaned <b>$orphan</b>),
+<h3><a href="http://www.bitcoin.org">Bitcoin</a> in perl</h3>
+<p>Blocks: <b>$blocks</b>,
 Transactions: <b>$txs</b>,
 Your addresses: <b>$keys</b></p>
 <p>

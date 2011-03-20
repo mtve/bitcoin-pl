@@ -4,9 +4,11 @@ use warnings;
 use strict;
 use DBI;
 
-my $DBI_ARG1 = 'dbi:SQLite:dbname=var/db';
-my $DBI_ARG2 = '';
-my $DBI_ARG3 = '';
+my $DBI_DS = 'dbi:SQLite:dbname=var/db';
+my $DBI_USER = '';
+my $DBI_PASS = '';
+
+our $COMMIT_BLOCKS = 1000;
 
 my $dbh;
 my %sth;
@@ -62,10 +64,6 @@ CREATE TABLE IF NOT EXISTS blk (
 CREATE INDEX IF NOT EXISTS blk_idx
 	ON blk (nHeight, mainBranch);
 
-CREATE TABLE IF NOT EXISTS orphan (
-	hash		BLOB(32) PRIMARY KEY
-);
-
 CREATE TABLE IF NOT EXISTS blk_tx (
 	blk_hash	BLOB(32) NOT NULL,
 	blk_n		INTEGER NOT NULL,
@@ -83,11 +81,6 @@ my %STH = (
 SELECT MAX(nHeight), hash FROM blk WHERE mainBranch = 1
 
 SQL
-	orphan		=> <<SQL,
-
-SELECT hash FROM orphan
-
-SQL
 	tx_out_spent	=> <<SQL,
 
 UPDATE tx_out SET spentHeight = ? WHERE tx_hash = ? AND tx_n = ?
@@ -96,7 +89,7 @@ SQL
 );
 
 sub init {
-	$dbh = DBI->connect ($DBI_ARG1, $DBI_ARG2, $DBI_ARG3, {
+	$dbh = DBI->connect ($DBI_DS, $DBI_USER, $DBI_PASS, {
 		RaiseError	=> 1,
 		AutoCommit	=> 0,
 	});
@@ -201,6 +194,7 @@ sub blk_save {
 	for (0 .. $#{ $blk->{vtx} }) {
 		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx}[$_]);
 	}
+	$dbh->commit if $blk->{nHeight} % $COMMIT_BLOCKS == 0;
 }
 
 sub blk_load {
@@ -221,25 +215,6 @@ sub blk_load {
 sub blk_best {
 	$sth{blk_best}->execute ();
 	return $sth{blk_best}->fetchrow_array;
-}
-
-sub orphan {
-	$sth{orphan}->execute ();
-	my ($h) = $sth{orphan}->fetchrow_array or return;
-	$sth{orphan}->finish ();
-	return $h;
-}
-
-sub orphan_ins {
-	my ($hash) = @_;
-
-	eval { $sth{orphan_ins}->execute ($hash) };
-}
-
-sub orphan_del {
-	my ($hash) = @_;
-
-	$sth{orphan_del}->execute ($hash);
 }
 
 sub key_load {
