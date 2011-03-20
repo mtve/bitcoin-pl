@@ -101,7 +101,7 @@ sub init {
 
 		$dbh->do ($str);
 
-		my ($table) = $str =~ /^\s+create\s+table\s.*?\b(\w+)\s*\(/i
+		my ($table) = $str =~ /^\s*create\s+table\s.*?\b(\w+)\s*\(/i
 			or next;
 		my (@row) = $str =~ /[(,]\s*([a-z]\w+)/ig;
 
