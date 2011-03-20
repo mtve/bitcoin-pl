@@ -86,11 +86,11 @@ HTML
 }
 
 sub page_about {
+	my $home = 'https://github.com/mtve/bitcoin-pl';
 	return <<HTML;
-<p>Version $VERSION running on perl $^V $^O, with ${\data::version },
+<p>Version <b>$VERSION</b> running on perl $^V $^O, with ${\data::version },
 and ${\ecdsa::version }</p>
-<p>Project home is
-<a href="https://github.com/mtve/bitcoin-pl">here</a></p>
+<p>Project home is at <a href="$home">$home</a></p>
 <p>Address for donations is <b>1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2</b></p>
 </p>
 HTML
