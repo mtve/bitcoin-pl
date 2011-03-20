@@ -9,10 +9,14 @@ use event;
 use main;
 use data;
 use logger;
+use base58;
+use ecdsa;
 
 our $VERSION = '110320';
-
 our $SQL_PAGE = 20;
+
+our $sid = base58::EncodeBase58 (
+    substr (base58::sha256 ("$$ @{[ (stat $0)[1,4,5,7,9] ]}"), 0, 8));
 
 sub html_esc'TIEHASH { bless {}, $_[0] }
 
@@ -73,6 +77,7 @@ HTML
 <form action="/sql" method="get">
 <p>Free form SQL query (dangerous!) :
 <input type="text" name="sql" value="$H{$sql}">
+<input type="hidden" name="sid" value="$sid">
 <input type="submit" value="Execute">
 </p>
 </form>
@@ -100,6 +105,12 @@ sub page_stop {
 	event::quit ();
 }
 
+sub check_sid {			# prevent xss
+	my ($file) = @_;
+
+	return $sid eq ($file->{http_param}{sid} || '');
+}
+
 sub page {
 	my ($file) = @_;
 
@@ -112,7 +123,7 @@ sub page {
 		my $mvc = "page_$1";
 		no strict 'refs';
 		$file->{http_param} = http_params ($3);
-		$page = $mvc->($file) if exists &$mvc;
+		$page = $mvc->($file) if exists &$mvc && check_sid ($file);
 	}
 
 	return <<HTML;
@@ -125,10 +136,10 @@ Transactions: <b>$txs</b>,
 Your addresses: <b>$keys</b></p>
 <p>
 <a href="/">Main</a> |
-<a href="/rotate">Rotate log</a> |
-<a href="/stop">Stop</a> |
-<a href="/sql">SQL query</a> |
-<a href="/about">About</a>
+<a href="/rotate?sid=$sid">Rotate log</a> |
+<a href="/stop?sid=$sid">Stop</a> |
+<a href="/sql?sid=$sid">SQL query</a> |
+<a href="/about?sid=$sid">About</a>
 </p>
 $page
 <p>Page generated at ${\scalar localtime}.</p>
