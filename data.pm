@@ -94,7 +94,7 @@ sub init {
 		AutoCommit	=> 0,
 	});
 
-	while ($SCRIPT =~ /([^;]+)/g) {
+	while ($SCRIPT =~ /\s*([^;]+)/g) {
 		my $str = $1;
 		$str =~ s/--.*//g;
 
