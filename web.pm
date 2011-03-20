@@ -82,7 +82,8 @@ HTML
 
 sub page_about {
 	return <<HTML;
-<p>Version $VERSION</p>
+<p>Version $VERSION running on perl $^V $^O, with ${\data::version },
+and ${\ecdsa::version }</p>
 <p>Project home is
 <a href="https://github.com/mtve/bitcoin-pl">here</a></p>
 <p>Address for donations is <b>1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2</b></p>

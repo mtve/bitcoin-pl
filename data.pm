@@ -241,6 +241,11 @@ sub sql {
 	return \@res;
 }
 
+sub version {
+	return "DBI $DBI::VERSION " .
+	    $dbh->get_info (17) . " " . $dbh->get_info (18);
+}
+
 END {
 	$dbh->commit if $dbh;
 }

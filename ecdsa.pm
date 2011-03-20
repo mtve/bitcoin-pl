@@ -276,4 +276,9 @@ sub Verify {
 	return $res;
 }
 
+sub version {
+	my $c = Math::BigInt->config ();
+	return "Math::BigInt @$c{qw( version lib lib_version )}";
+}
+
 1;

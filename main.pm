@@ -403,8 +403,7 @@ sub AddBlock {
 		"block $H{$blk_h}";
 
 	data::blk_save ($blk_h, $blk);
-
-	($nBestHeight) = data::blk_best () or die;
+	$nBestHeight = $blk->{nHeight} if $blk->{nHeight} > $nBestHeight;
 }
 
 sub BlockHash {
@@ -477,6 +476,7 @@ sub GenesisBlock {
 
 sub init () {
 	ProcessBlock (GenesisBlock ());
+	($nBestHeight) = data::blk_best () or die;
 }
 
 #

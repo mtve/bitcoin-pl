@@ -6,6 +6,7 @@ use strict;
 
 use ecdsa;
 
+if (0) {
 my $a = 'MHQCAQEEIB/XzR7ZwDT4cvFZT7FB6GKUcrHF8eIxu2bNesEG31mMoAcGBSuBBAAK
 oUQDQgAEysVpdLC81+NVHY1S7Xm96xsl5D983TztFRkTE7VFqudWMj8q9Lww1TK/
 NNoNBje/F+Uy0i+KnwXzfGcpBpkD+Q==
@@ -90,3 +91,6 @@ b7 3a d6 52 f9 5a 0d 50  77 92 44 73 aa 5a a9 23
 83 f1 eb b9 22 66 7a 62  10 96 80 fb 71 d6 a2 79
 fc 2f d7 81 ae 59 9e
 ' =~ /\S\S/g;
+}
+
+print ecdsa::version;
