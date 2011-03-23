@@ -62,14 +62,8 @@ sub IsCoinBase {
 	@{ $tx->{vin} } == 1 && $tx->{vin}[0]{prevout}{hash} eq $NULL256;
 }
 
-sub TransactionHash {
-	my ($tx) = @_;
-
-	return base58::Hash (serialize::Serialize ('CTransaction', $tx));
-}
-
 sub TransactionIncome {
-	my ($tx, $tx_h, $last_tx, $spent) = @_;
+	my ($tx, $last_tx, $spent) = @_;
 
 	my $sum = 0;
 	my $last = "last_tx: @{[ map $H{$_}, sort keys %$last_tx ]}";
@@ -93,7 +87,7 @@ sub TransactionIncome {
 		my $nValue = $txFrom->{vout}[$nOut]{nValue};
 		my $scriptPubKey = $txFrom->{vout}[$nOut]{scriptPubKey};
 
-		D && warn "$H{$tx_h} $_ <- $H{$txFrom_h} $nOut =$nValue $last";
+		D && warn "$H{$tx->{h}} $_ <- $H{$txFrom_h} $nOut =$nValue $last";
 
 		EvalScriptCheck ($tx->{vin}[$_]{scriptSig}, $scriptPubKey,
 			$tx, $_) or die "tx check failed";
@@ -104,18 +98,20 @@ sub TransactionIncome {
 }
 
 sub TransactionOutcome {
-	my ($tx, $tx_h) = @_;
+	my ($tx) = @_;
 
 	my $sum = 0;
 	for (0 .. $#{ $tx->{vout} }) {
 		my $v = $tx->{vout}[$_]{nValue};
 		die "txout.nValue negative" if $v >= 2**62;
+
 		my $pub = $tx->{vout}[$_]{scriptPubKey};
 		my $pub_h = GetKeyHash ($pub) or die "no pub key";
 		my $addr = base58::Hash160ToAddress ($pub_h);
 		$tx->{vout}[$_]{addr} = $addr;
 		$tx->{vout}[$_]{spentHeight} = 0;
-		D && warn "$H{$tx_h} out $_ $addr +$v";
+
+		D && warn "$H{$tx->{h}} out $_ $addr +$v";
 		$sum += $v;
 	}
 	return $sum;
@@ -127,9 +123,7 @@ sub CheckTransaction {
 	die "vin or vout empty"
 		if !@{ $tx->{vin} } || !@{ $tx->{vout} };
 
-	my $tx_h = TransactionHash ($tx);
-
-	D && warn "$H{$tx_h}";
+	D && warn "$H{$tx->{h}}";
 
 	my ($out, $in, $fee);
 	if (IsCoinBase ($tx)) {
@@ -138,30 +132,48 @@ sub CheckTransaction {
 			if $len < 2 || $len > 100;
 
 		$in = 0;
-		$out = TransactionOutcome ($tx, $tx_h);
+		$out = TransactionOutcome ($tx);
 		$fee = GetBlockValue (0);
-		D && warn "$H{$tx_h} coin out=$out fee=$fee";
+		D && warn "$H{$tx->{h}} coin out=$out fee=$fee";
 	} else {
-		$in = TransactionIncome ($tx, $tx_h, $last_tx, $spent);
-		$out = TransactionOutcome ($tx, $tx_h);
+		$in = TransactionIncome ($tx, $last_tx, $spent);
+		$out = TransactionOutcome ($tx);
 		$fee = GetMinFee ($tx);
-		D && warn "$H{$tx_h} in=$in fee=$fee out=$out";
-		warn "XXX fix getminfree $H{$tx_h} $out > $in - $fee"
+		D && warn "$H{$tx->{h}} in=$in fee=$fee out=$out";
+		warn "XXX fix getminfree $H{$tx->{h}} $out > $in - $fee"
 			if $out > $in - $fee;
 	}
-	$last_tx->{$tx_h} = $tx;
+	$last_tx->{$tx->{h}} = $tx;
 	return $out - $in - $fee;
 }
 
-sub AcceptTransaction {
+sub AddTransaction {
+	my ($tx) = @_;
+
+	D && warn "add tx $H{$tx->{h}}";
+	data::tx_save ($tx->{h}, $tx) if !data::tx_exists ($tx->{h});
+}
+
+sub TransactionHash {
+	my ($tx) = @_;
+
+	return base58::Hash (serialize::Serialize ('CTransaction', $tx));
+}
+
+sub ProcessTransaction {
 	my ($tx) = @_;
 
 	die "coinbase as individual tx"
 		if IsCoinBase ($tx);
 
-	my $tx_h = TransactionHash ($tx);
-	#XXX data::tx_save ($tx_h, $tx);
-	warn "new tx $H{$tx_h}";
+	$tx->{h} = TransactionHash ($tx);
+
+	CheckTransaction ($tx, {}, {});
+
+	AddTransaction ($tx);
+
+	data::blk_tx_save ($NULL256, 0, $tx->{h});
+	warn "new tx $H{$tx->{h}}";
 }
 
 sub GetMinFee {
@@ -222,7 +234,7 @@ sub IsMine {
 	return ($key ? 'OP_PUBKEY' : 'OP_PUBKEYHASH', $k);
 }
 
-sub GetCredit {
+sub GetCredit_ {
 	my ($tx) = @_;
 
 	my $nCredit = 0;
@@ -231,7 +243,7 @@ sub GetCredit {
 	return $nCredit;	
 }
 
-sub GetDepthInMainChain {
+sub GetDepthInMainChain_ {
 	my ($tx) = @_;
 
 	my $blk_h = $tx->{blk_h} or die "no block hash";
@@ -239,19 +251,12 @@ sub GetDepthInMainChain {
 	return $nBestHeight - $blk->{nHeight} + 1;
 }
 
-sub GetBlocksToMaturity {
+sub GetBlocksToMaturity_ {
 	my ($tx) = @_;
 
 	return 0 if !IsCoinBase ($tx);
 	my $m = ($COINBASE_MATURITY + 20) - GetDepthInMainChain ($tx);
 	return $m > 0 ? $m : 0;
-}
-
-sub AddTransaction {
-	my ($tx, $tx_h) = @_;
-
-	D && warn "add tx $H{$tx_h}";
-	data::tx_save ($tx_h, $tx) if !data::tx_exists ($tx_h);
 }
 
 #
@@ -270,7 +275,7 @@ sub GetBlockValue {
 	return $nSubsidy + $nFees;
 }
 
-sub GetNextWorkRequired {
+sub GetNextWorkRequired_ {
 	my ($block) = @_;
 
 	my $nTargetTimespan = 14 * 24 * 60 * 60;	# two weeks
@@ -323,30 +328,40 @@ sub GetNextWorkRequired {
 }
 
 sub BuildMerkleTree {
-	my ($vtx) = @_;
-
-	my @h = map TransactionHash ($_), @$vtx;
+	my (@h) = @_;
 
 	@h = map base58::Hash ($h[$_] . $h[$_ + ($_ < $#h)]),
 		map $_ * 2, 0 .. $#h / 2
 			while @h > 1;
-
 	DD && warn "$H{$h[0]}";
-
 	return $h[0];
 }
 
+sub SpentBlock {
+	my ($blk) = @_;
+
+	my $spent = {};
+	my $last_tx = {};
+	my $sum = 0;
+	$sum += CheckTransaction ($_, $last_tx, $spent) for @{ $blk->{vtx} };
+	D && warn "$H{$blk->{h}} sum $sum";
+	$sum <= 0 or die "$H{$blk->{h}} sum $sum is positive";
+	return $spent;
+}
+
 sub CheckBlock {
-	my ($blk, $blk_h) = @_;
+	my ($blk) = @_;
+
+	my $vtx = $blk->{vtx};
 
 	die "size limits failed"
-		if !@{ $blk->{vtx} };
+		if !@$vtx;
 	die "block timestamp too far in the future"
 		if $blk->{nTime} > time () + 2 * 60 * 60;
 	die "first tx is not coinbase"
-		if !IsCoinBase ($blk->{vtx}[0]);
+		if !IsCoinBase ($vtx->[0]);
 	die "more than one coinbase"
-		if grep IsCoinBase ($blk->{vtx}[$_]), 1..$#{ $blk->{vtx} };
+		if grep IsCoinBase ($vtx->[$_]), 1..$#$vtx;
 
 	my $compact = SetCompact256 ($blk->{nBits});
 	DD && warn "$H{$compact}";
@@ -354,18 +369,24 @@ sub CheckBlock {
 	die "nBits below minimum work"
 		if $compact gt $bnProofOfWorkLimit;
 	die "hash doesn't match nBits"
-		if reverse ($blk_h) gt $compact;
+		if reverse ($blk->{h}) gt $compact;
+
+	$blk->{vtx_h} = [ map $_->{h} = TransactionHash ($_), @$vtx ];
 
 	die "hashMerkleRoot mismatch"
-		if $blk->{hashMerkleRoot} ne BuildMerkleTree ($blk->{vtx});
+		if $blk->{hashMerkleRoot} ne BuildMerkleTree (@{ $blk->{vtx_h} });
+}
 
-	if ($blk_h eq $GenesisHash) {
+sub ReconnectBlock {
+	my ($blk) = @_;
+
+	if ($blk->{h} eq $GenesisHash) {
 		$blk->{nHeight} = 0;
 		$blk->{mainBranch} = 1;
 	} else {
-		my $prev = data::blk_load ($blk->{hashPrevBlock}) or die;
-		$blk->{nHeight} = $prev->{nHeight} + 1;
-		$blk->{mainBranch} = $prev->{mainBranch} &&
+		my $prev = data::blk_load ($blk->{hashPrevBlock});
+		$blk->{nHeight} = $prev ? $prev->{nHeight} + 1 : -1;
+		$blk->{mainBranch} = $prev && $prev->{mainBranch} &&
 		    $blk->{nHeight} > $nBestHeight ? 1 : 0;
 	}
 
@@ -373,36 +394,23 @@ sub CheckBlock {
 		die "new main branch is not implemented";
 	}
 
-	my $last_tx = {};
-	my %spent = ();
-	my $sum = 0;
-	$sum += CheckTransaction ($_, $last_tx, \%spent)
-		for @{ $blk->{vtx} };
-	D && warn "$H{$blk_h} sum $sum";
-	$sum <= 0 or die "block sum $sum is positive";
-
 	if ($blk->{mainBranch}) {
-		for my $h (keys %spent) {
-			for (keys %{ $spent{$h} }) {
-				D && warn "spent $H{$h} $_ at $nBestHeight";
-				data::tx_out_spent ($h, $_, $nBestHeight);
-			}
-		}
+		my $spent = SpentBlock ($blk);
+
+		for my $tx_h (keys %$spent) {
+		for my $n (keys %{ $spent->{$tx_h} }) {
+			D && warn "spent $H{$tx_h} $n at $blk->{nHeight}";
+			data::tx_out_spent ($tx_h, $n, $blk->{nHeight});
+		}}
 	}
-}
-
-sub AddBlock {
-	my ($blk, $blk_h) = @_;
-
-	my $vtx = $blk->{vtx};
-	my @th = map TransactionHash ($_), @$vtx;
-	AddTransaction ($vtx->[$_], $th[$_]) for 0..$#th;
-	$blk->{vtx} = \@th;
-
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
-		"block $H{$blk_h}";
+		"block $H{$blk->{h}}";
 
-	data::blk_save ($blk_h, $blk);
+	if ($blk->{nHeight} != -1) {
+		data::blk_connect ($blk);
+		ReconnectBlock ($_) for data::blk_orphans ($blk->{h});
+	}
+
 	$nBestHeight = $blk->{nHeight} if $blk->{nHeight} > $nBestHeight;
 }
 
@@ -415,26 +423,25 @@ sub BlockHash {
 sub ProcessBlock {
 	my ($blk) = @_;
 
-	my $blk_h = BlockHash ($blk);
-	D && warn "$H{$blk_h}";
+	$blk->{h} = BlockHash ($blk);
+	D && warn "$H{$blk->{h}}";
 
-	if (data::blk_exists ($blk_h)) {
-		warn "already have block $H{$blk_h}";
-		return 1;
-	}
+	CheckBlock ($blk);
 
-	my $prev_h = $blk->{hashPrevBlock};
-	if ($blk_h ne $GenesisHash && !data::blk_exists ($prev_h)) {
-		warn "orphaned block $H{$blk_h}, continue downloading";
-		return 0;
-	}
+	AddTransaction ($_) for @{ $blk->{vtx} };
 
-	CheckBlock ($blk, $blk_h);
-	AddBlock ($blk, $blk_h);
-	return 1;
+	$blk->{nHeight} = -1;
+	$blk->{mainBranch} = 0;
+	data::blk_save ($blk->{h}, $blk);
+
+	ReconnectBlock ($blk);
+
+	return $blk->{nHeight} != -1;
 }
 
 sub GenesisBlock {
+	return if data::blk_exists ($GenesisHash);
+
 	my $tx0	= {
 		nVersion	=> 1,
 		vin		=> [ {
@@ -459,7 +466,7 @@ sub GenesisBlock {
 	my $blk0 = {
 		nVersion	=> 1,
 		hashPrevBlock	=> $NULL256,
-		hashMerkleRoot	=> BuildMerkleTree ([ $tx0 ]),
+		hashMerkleRoot	=> TransactionHash ($tx0),
 		nTime		=> 1231006505,
 		nBits		=> 0x1d00ffff,
 		nNonce		=> 2083236893,
@@ -471,19 +478,19 @@ sub GenesisBlock {
 	BlockHash ($blk0) eq $GenesisHash
 		or die "assert GenesisHash";
 
-	return $blk0;
+	ProcessBlock ($blk0);
 }
 
 sub init () {
-	ProcessBlock (GenesisBlock ());
-	($nBestHeight) = data::blk_best () or die;
+	GenesisBlock ();
+	($nBestHeight) = data::blk_best () or die "no best";
 }
 
 #
 # action
 #
 
-sub GetBalance {
+sub GetBalance_ {
 	my $nTotal = 0;
 	for my $tx_h (keys my %XXX) {
 		my $tx = data::tx_load ($tx_h);
@@ -493,7 +500,7 @@ sub GetBalance {
 	return $nTotal;
 }
 
-sub SelectCoins {
+sub SelectCoins_ {
 	my ($nTotalValue) = @_;
 
 	my @coins;
@@ -598,7 +605,7 @@ sub NewKey {
 	return $key;
 }
 
-sub CreateTransaction {
+sub CreateTransaction_ {
 	my ($scriptPubKey, $nValue) = @_;
 
 	my $tx = {
@@ -692,13 +699,13 @@ AGAIN:	$tx->{vin} = [];
 	return ($tx, $key, $nFee);
 }
 
-sub CommitTransaction {
+sub CommitTransaction_ {
 	my ($wtxNew, $key) = @_;
 
 	# XXX
 }
 
-sub SendMoneyToBitcoinAddress {
+sub SendMoneyToBitcoinAddress_ {
 	my ($strAddress, $nValue) = @_;
 
 	die "Invalid amount"

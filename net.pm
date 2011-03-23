@@ -212,7 +212,7 @@ sub got_tx {
 	$tx->{nVersion} == 1
 		or die "bad version $tx->{nVersion}";
 
-	main::AcceptTransaction ($tx);
+	main::ProcessTransaction ($tx);
 }
 
 sub got_getblocks {

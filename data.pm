@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS blk (
 	nTime		INTEGER NOT NULL,
 	nBits		INTEGER NOT NULL,
 	nNonce		INTEGER NOT NULL,
-	nHeight		INTEGER NOT NULL,
+	nHeight		INTEGER NOT NULL,	-- orphan is -1
 	mainBranch	INTEGER NOT NULL
 );
 
@@ -79,6 +79,16 @@ my %STH = (
 	blk_best	=> <<SQL,
 
 SELECT MAX(nHeight), hash FROM blk WHERE mainBranch = 1
+
+SQL
+	blk_connect	=> <<SQL,
+
+UPDATE blk SET nHeight = ?, mainBranch = ? WHERE hash = ?
+
+SQL
+	blk_orphans	=> <<SQL,
+
+SELECT hash FROM blk WHERE nHeight = -1 AND hashPrevBlock = ?
 
 SQL
 	tx_out_spent	=> <<SQL,
@@ -177,6 +187,8 @@ sub tx_load {
 		$tx->{vout}[ $h->{tx_n} ] = $h;
 	}
 
+	$tx->{h} = $tx_h;
+
 	return $tx;
 }
 
@@ -192,8 +204,8 @@ sub blk_save {
 	$sth{blk_ins}->execute ($blk_h, @$blk{qw(
 		hashPrevBlock nTime nBits nNonce nHeight mainBranch
 	)});
-	for (0 .. $#{ $blk->{vtx} }) {
-		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx}[$_]);
+	for (0 .. $#{ $blk->{vtx_h} }) {
+		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx_h}[$_]);
 	}
 	$dbh->commit if $blk->{nHeight} % $COMMIT_BLOCKS == 0;
 }
@@ -207,8 +219,10 @@ sub blk_load {
 
 	$sth{blk_tx_sel}->execute ($blk_h);
 	while ($h = $sth{blk_tx_sel}->fetchrow_hashref) {
-		$blk->{vtx}[ $h->{blk_n} ] = $h->{tx_hash};
+		$blk->{vtx_h}[ $h->{blk_n} ] = $h->{tx_hash};
 	}
+
+	$blk->{h} = $blk_h;
 
 	return $blk;
 }
@@ -216,6 +230,25 @@ sub blk_load {
 sub blk_best {
 	$sth{blk_best}->execute ();
 	return $sth{blk_best}->fetchrow_array;
+}
+
+sub blk_connect {
+	my ($blk) = @_;
+
+	$sth{blk_connect}->execute (@$blk{qw( nHeight mainBranch h )});
+}
+
+sub blk_orphans {
+	my ($blk_h) = @_;
+
+	$sth{blk_orphans}->execute ($blk_h);
+	return map blk_load ($_->[0]), $sth{blk_orphans}->fetchall_arrayref;
+}
+
+sub blk_tx_save {
+	my ($blk_h, $blk_n, $tx_h) = @_;
+
+	$sth{blk_tx_ins}->execute ($blk_h, $blk_n, $tx_h);
 }
 
 sub key_load {
@@ -226,7 +259,9 @@ sub key_load {
 }
 
 sub key_save {
-	$sth{key_ins}->execute (@_);
+	my ($pub, $priv, $addr) = @_;
+
+	$sth{key_ins}->execute ($pub, $priv, $addr);
 }
 
 sub sql {
