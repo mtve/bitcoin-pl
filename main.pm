@@ -104,14 +104,7 @@ sub TransactionOutcome {
 	for (0 .. $#{ $tx->{vout} }) {
 		my $v = $tx->{vout}[$_]{nValue};
 		die "txout.nValue negative" if $v >= 2**62;
-
-		my $pub = $tx->{vout}[$_]{scriptPubKey};
-		my $pub_h = GetKeyHash ($pub) or die "no pub key";
-		my $addr = base58::Hash160ToAddress ($pub_h);
-		$tx->{vout}[$_]{addr} = $addr;
-		$tx->{vout}[$_]{spentHeight} = 0;
-
-		D && warn "$H{$tx->{h}} out $_ $addr +$v";
+		D && warn "$H{$tx->{h}} $_ -> +$v";
 		$sum += $v;
 	}
 	return $sum;
@@ -147,11 +140,25 @@ sub CheckTransaction {
 	return $out - $in - $fee;
 }
 
+sub TransactionFixOutAddr {
+	my ($tx) = @_;
+
+	for (0 .. $#{ $tx->{vout} }) {
+		my $pub = $tx->{vout}[$_]{scriptPubKey};
+		my $pub_h = GetKeyHash ($pub) or die "no pub key";
+		my $addr = base58::Hash160ToAddress ($pub_h);
+		$tx->{vout}[$_]{addr} = $addr;
+		$tx->{vout}[$_]{spentHeight} = 0;
+	}
+}
+
 sub AddTransaction {
 	my ($tx) = @_;
 
 	D && warn "add tx $H{$tx->{h}}";
-	data::tx_save ($tx->{h}, $tx) if !data::tx_exists ($tx->{h});
+	return if data::tx_exists ($tx->{h});
+	TransactionFixOutAddr ($tx);
+	data::tx_save ($tx->{h}, $tx);
 }
 
 sub TransactionHash {
@@ -167,11 +174,7 @@ sub ProcessTransaction {
 		if IsCoinBase ($tx);
 
 	$tx->{h} = TransactionHash ($tx);
-
-	CheckTransaction ($tx, {}, {});
-
 	AddTransaction ($tx);
-
 	data::blk_tx_save ($NULL256, 0, $tx->{h});
 	warn "new tx $H{$tx->{h}}";
 }
@@ -408,7 +411,7 @@ sub ReconnectBlock {
 
 	if ($blk->{nHeight} != -1) {
 		data::blk_connect ($blk);
-		ReconnectBlock ($_) for data::blk_orphans ($blk->{h});
+		ReconnectBlock ($_) for data::blk_orphan ($blk->{h});
 	}
 
 	$nBestHeight = $blk->{nHeight} if $blk->{nHeight} > $nBestHeight;
@@ -435,7 +438,6 @@ sub ProcessBlock {
 	data::blk_save ($blk->{h}, $blk);
 
 	ReconnectBlock ($blk);
-
 	return $blk->{nHeight} != -1;
 }
 

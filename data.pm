@@ -86,7 +86,7 @@ SQL
 UPDATE blk SET nHeight = ?, mainBranch = ? WHERE hash = ?
 
 SQL
-	blk_orphans	=> <<SQL,
+	blk_orphan	=> <<SQL,
 
 SELECT hash FROM blk WHERE nHeight = -1 AND hashPrevBlock = ?
 
@@ -238,11 +238,11 @@ sub blk_connect {
 	$sth{blk_connect}->execute (@$blk{qw( nHeight mainBranch h )});
 }
 
-sub blk_orphans {
+sub blk_orphan {
 	my ($blk_h) = @_;
 
-	$sth{blk_orphans}->execute ($blk_h);
-	return map blk_load ($_->[0]), $sth{blk_orphans}->fetchall_arrayref;
+	$sth{blk_orphan}->execute ($blk_h);
+	return map blk_load ($_->[0]), $sth{blk_orphan}->fetchall_arrayref;
 }
 
 sub blk_tx_save {

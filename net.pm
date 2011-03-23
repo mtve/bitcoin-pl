@@ -192,7 +192,11 @@ sub got_inv {
 			die "inv unknown type $_->{type}";
 		}
 	}
-	PushMessage ($file, 'getdata', $outv) if @$outv;
+	if (@$outv) {
+		PushMessage ($file, 'getdata', $outv);
+	} else {
+		PushGetBlocks ($file);
+	}
 }
 
 sub got_block {
