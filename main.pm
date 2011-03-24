@@ -355,6 +355,8 @@ sub SpentBlock {
 sub CheckBlock {
 	my ($blk) = @_;
 
+	D && warn "$H{$blk->{h}}";
+
 	my $vtx = $blk->{vtx};
 
 	die "size limits failed"
@@ -383,12 +385,15 @@ sub CheckBlock {
 sub ReconnectBlock {
 	my ($blk) = @_;
 
+	D && warn "$H{$blk->{h}}";
+
 	if ($blk->{h} eq $GenesisHash) {
 		$blk->{nHeight} = 0;
 		$blk->{mainBranch} = 1;
 	} else {
 		my $prev = data::blk_load ($blk->{hashPrevBlock});
-		$blk->{nHeight} = $prev ? $prev->{nHeight} + 1 : -1;
+		$blk->{nHeight} = $prev && $prev->{nHeight} >= 0 ?
+		    $prev->{nHeight} + 1 : -1;
 		$blk->{mainBranch} = $prev && $prev->{mainBranch} &&
 		    $blk->{nHeight} > $nBestHeight ? 1 : 0;
 	}
@@ -406,15 +411,17 @@ sub ReconnectBlock {
 			data::tx_out_spent ($tx_h, $n, $blk->{nHeight});
 		}}
 	}
+
+	$nBestHeight = $blk->{nHeight} if $blk->{nHeight} > $nBestHeight;
+
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
 		"block $H{$blk->{h}}";
 
 	if ($blk->{nHeight} != -1) {
 		data::blk_connect ($blk);
-		ReconnectBlock ($_) for data::blk_orphan ($blk->{h});
+		ReconnectBlock (data::blk_load ($_))
+			for data::blk_orphan ($blk->{h});
 	}
-
-	$nBestHeight = $blk->{nHeight} if $blk->{nHeight} > $nBestHeight;
 }
 
 sub BlockHash {

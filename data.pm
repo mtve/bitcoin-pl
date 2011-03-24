@@ -242,7 +242,7 @@ sub blk_orphan {
 	my ($blk_h) = @_;
 
 	$sth{blk_orphan}->execute ($blk_h);
-	return map blk_load ($_->[0]), $sth{blk_orphan}->fetchall_arrayref;
+	return map $_->[0], $sth{blk_orphan}->fetchall_arrayref;
 }
 
 sub blk_tx_save {

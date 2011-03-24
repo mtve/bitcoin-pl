@@ -237,7 +237,7 @@ sub loop_one {
 }
 
 sub quit {
-	print "quiting\n";
+	print "quiting, please wait\n";
 	$quit = 1;
 }
 
