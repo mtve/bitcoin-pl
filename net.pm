@@ -182,31 +182,31 @@ sub got_inv {
 	D && warn "debug";
 
 	my $outv = [];
+	my $flag = 0;
 	for (@$inv) {
 		my $h = $_->{hash};
 		if ($_->{type} == $MSG_TX) {
 			push @$outv, $_ if !data::tx_exists ($h);
 		} elsif ($_->{type} == $MSG_BLOCK) {
-			push @$outv, $_ if !data::blk_exists ($h);
+			my $b = data::blk_exists ($h);
+			push @$outv, $_ if !$b;
+			$flag = 1 if $b && $b->{nHeight} == -1;
 		} else {
 			die "inv unknown type $_->{type}";
 		}
 	}
-	if (@$outv) {
-		PushMessage ($file, 'getdata', $outv);
-	} else {
-		PushGetBlocks ($file);
-	}
+	PushMessage ($file, 'getdata', $outv) if @$outv;
+	PushGetBlocks ($file) if $flag;
 }
 
 sub got_block {
-	my ($file, $block) = @_;
+	my ($file, $blk) = @_;
 
 	D && warn "debug";
-	$block->{nVersion} == 1
-		or die "bad version $block->{nVersion}";
+	$blk->{nVersion} == 1
+		or die "bad version $blk->{nVersion}";
 
-	PushGetBlocks ($file) if !main::ProcessBlock ($block);
+	PushGetBlocks ($file) if !main::ProcessBlock ($blk);
 }
 
 sub got_tx {

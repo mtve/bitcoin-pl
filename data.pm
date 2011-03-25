@@ -4,14 +4,13 @@ use warnings;
 use strict;
 use DBI;
 
+use event;
+
 my $DBI_DS = 'dbi:SQLite:dbname=var/db';
 my $DBI_USER = '';
 my $DBI_PASS = '';
 
-our $COMMIT_BLOCKS = 1000;
-
-my $dbh;
-my %sth;
+my $COMMIT_PERIOD = 5 * 60;
 
 my $SCRIPT = <<SQL;
 
@@ -98,6 +97,14 @@ UPDATE tx_out SET spentHeight = ? WHERE tx_hash = ? AND tx_n = ?
 SQL
 );
 
+my $dbh;
+my %sth;
+
+sub commit {
+	warn "commit";
+	$dbh->commit if $dbh;
+}
+
 sub init {
 	$dbh = DBI->connect ($DBI_DS, $DBI_USER, $DBI_PASS, {
 		RaiseError	=> 1,
@@ -144,6 +151,11 @@ SQL
 	}
 
 	$sth{$_} = $dbh->prepare ($STH{$_}) for keys %STH;
+
+	event::timer_new (
+		period	=> $COMMIT_PERIOD,
+		cb	=> \&commit,
+	);
 }
 
 sub tx_save {
@@ -207,7 +219,6 @@ sub blk_save {
 	for (0 .. $#{ $blk->{vtx_h} }) {
 		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx_h}[$_]);
 	}
-	$dbh->commit if $blk->{nHeight} % $COMMIT_BLOCKS == 0;
 }
 
 sub blk_load {
@@ -242,7 +253,7 @@ sub blk_orphan {
 	my ($blk_h) = @_;
 
 	$sth{blk_orphan}->execute ($blk_h);
-	return map $_->[0], $sth{blk_orphan}->fetchall_arrayref;
+	return map $_->[0], @{ $sth{blk_orphan}->fetchall_arrayref };
 }
 
 sub blk_tx_save {
@@ -282,8 +293,6 @@ sub version {
 	    $dbh->get_info (17) . " " . $dbh->get_info (18);
 }
 
-END {
-	$dbh->commit if $dbh;
-}
+END { commit (); }
 
 1;

@@ -12,7 +12,7 @@ use logger;
 use base58;
 use ecdsa;
 
-our $VERSION = '110320';
+our $VERSION = '110325';
 our $SQL_PAGE = 20;
 
 our $sid = base58::EncodeBase58 (

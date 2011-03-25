@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#! /usr/bin/perl -l
 BEGIN { chdir '..' }
 
 use warnings;
@@ -13,3 +13,6 @@ print "ok" if data::tx_exists (scalar reverse pack 'H*',
 
 print data::version ();
 
+print join '*', map { unpack 'H*', reverse } data::blk_orphan (
+scalar reverse pack 'H*',
+'000000000000961f26a4c14a6745d1362d03c5eafeaa0d66138b000e5ca20b8c');
