@@ -13,7 +13,6 @@ Features:
 - blockchain download
 
 Todo:
-- periodic commit by time not by height
 - much more testing
 - chain branches
 - add web auth with roles

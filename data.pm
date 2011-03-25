@@ -10,7 +10,7 @@ my $DBI_DS = 'dbi:SQLite:dbname=var/db';
 my $DBI_USER = '';
 my $DBI_PASS = '';
 
-my $COMMIT_PERIOD = 5 * 60;
+my $COMMIT_PERIOD = 10 * 60;
 
 my $SCRIPT = <<SQL;
 
