@@ -65,12 +65,12 @@ CREATE INDEX IF NOT EXISTS blk_idx
 
 CREATE TABLE IF NOT EXISTS blk_tx (
 	blk_hash	BLOB(32) NOT NULL,
-	blk_n		INTEGER NOT NULL,
+	blk_n		INTEGER NOT NULL,	-- new tx is -1
 	tx_hash		BLOB(32) NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS blk_tx_idx
-	ON blk_tx (blk_hash);
+	ON blk_tx (blk_hash, blk_n);
 
 SQL
 
@@ -88,6 +88,11 @@ SQL
 	blk_orphan	=> <<SQL,
 
 SELECT hash FROM blk WHERE nHeight = -1 AND hashPrevBlock = ?
+
+SQL
+	blk_tx_del	=> <<SQL,
+
+DELETE FROM blk_tx WHERE blk_hash = ? AND blk_n = ? AND tx_hash = ?
 
 SQL
 	tx_out_spent	=> <<SQL,
@@ -256,10 +261,16 @@ sub blk_orphan {
 	return map $_->[0], @{ $sth{blk_orphan}->fetchall_arrayref };
 }
 
-sub blk_tx_save {
+sub blk_tx_add {
 	my ($blk_h, $blk_n, $tx_h) = @_;
 
 	$sth{blk_tx_ins}->execute ($blk_h, $blk_n, $tx_h);
+}
+
+sub blk_tx_del {
+	my ($blk_h, $blk_n, $tx_h) = @_;
+
+	$sth{blk_tx_del}->execute ($blk_h, $blk_n, $tx_h);
 }
 
 sub key_load {

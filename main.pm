@@ -175,7 +175,7 @@ sub ProcessTransaction {
 
 	$tx->{h} = TransactionHash ($tx);
 	AddTransaction ($tx);
-	data::blk_tx_save ($NULL256, 0, $tx->{h});
+	data::blk_tx_add ($NULL256, -1, $tx->{h});
 	warn "new tx $H{$tx->{h}}";
 }
 
@@ -436,9 +436,15 @@ sub ProcessBlock {
 	$blk->{h} = BlockHash ($blk);
 	D && warn "$H{$blk->{h}}";
 
+	if (data::blk_exists ($blk->{h})) {
+		warn "block $blk->{h} already processed";
+		return;
+	}
+
 	CheckBlock ($blk);
 
 	AddTransaction ($_) for @{ $blk->{vtx} };
+	data::blk_tx_del ($NULL256, -1, $_) for @{ $blk->{vtx_h} };
 
 	$blk->{nHeight} = -1;
 	$blk->{mainBranch} = 0;
@@ -487,11 +493,11 @@ sub GenesisBlock {
 	BlockHash ($blk0) eq $GenesisHash
 		or die "assert GenesisHash";
 
-	ProcessBlock ($blk0);
+	return $blk0;
 }
 
 sub init () {
-	GenesisBlock ();
+	ProcessBlock (GenesisBlock ());
 	($nBestHeight) = data::blk_best () or die "no best";
 }
 
