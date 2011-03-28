@@ -174,6 +174,12 @@ sub ProcessTransaction {
 		if IsCoinBase ($tx);
 
 	$tx->{h} = TransactionHash ($tx);
+
+	if (data::tx_exists ($tx->{h})) {
+		warn "tx $H{$tx->{h}} already processed";
+		return;
+	}
+
 	AddTransaction ($tx);
 	data::blk_tx_add ($NULL256, -1, $tx->{h});
 	warn "new tx $H{$tx->{h}}";
@@ -437,7 +443,7 @@ sub ProcessBlock {
 	D && warn "$H{$blk->{h}}";
 
 	if (data::blk_exists ($blk->{h})) {
-		warn "block $blk->{h} already processed";
+		warn "block $H{$blk->{h}} already processed";
 		return;
 	}
 
