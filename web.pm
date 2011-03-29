@@ -96,6 +96,41 @@ and ${\ecdsa::version }</p>
 HTML
 }
 
+sub key_gen {
+	my $key = main::NewKey ();
+
+	return <<HTML;
+<p>Generated new key with address <b>$key->{addr}</b></p>
+HTML
+}
+
+sub page_key {
+	my ($file) = @_;
+
+	my $f = "key_" . ($file->{http_param}{func} || '');
+	my $func = do { no strict 'refs'; exists &$f ? &$f ($file) : '' };
+
+	my $keys = '';
+	$keys .= <<HTML for data::key_all ();
+<tr><td>$_->{addr}</td><td align="right">$_->{ammo}</td></tr>
+HTML
+	$keys = <<HTML if !$keys;
+<tr><td colspan="2"><i>no keys</i></td></tr>
+HTML
+	return <<HTML;
+<p><a href="/key?sid=$sid">List</a> |
+<a href="/key?sid=$sid&func=gen">New</a> |
+<a href="/key?sid=$sid&func=exp">Export</a> |
+<a href="/key?sid=$sid&func=imp">Import</a></p>
+$func
+<table border="1"><tr>
+<td><b>Address</b></td>
+<td><b>Amount</b></td></tr>
+$keys
+</table>
+HTML
+}
+
 sub page_rotate {
 	logger::rotate ();
 	return '<p>Done.</p>';
@@ -136,6 +171,7 @@ Transactions: <b>$txs</b>,
 Your addresses: <b>$keys</b></p>
 <p>
 <a href="/">Main</a> |
+<a href="/key?sid=$sid">Wallet</a> |
 <a href="/rotate?sid=$sid">Rotate log</a> |
 <a href="/stop?sid=$sid">Stop</a> |
 <a href="/sql?sid=$sid">SQL query</a> |

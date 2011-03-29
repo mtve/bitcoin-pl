@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS tx_out (
 );
 
 CREATE INDEX IF NOT EXISTS tx_out_idx
-	ON tx_out (tx_hash, tx_n, addr, spentHeight);
+	ON tx_out (tx_hash, tx_n);
+CREATE INDEX IF NOT EXISTS tx_out_idx2
+	ON tx_out (addr, spentHeight);
 
 CREATE TABLE IF NOT EXISTS blk (
 	hash		BLOB(32) PRIMARY KEY,
@@ -100,6 +102,19 @@ SQL
 UPDATE tx_out SET spentHeight = ? WHERE tx_hash = ? AND tx_n = ?
 
 SQL
+	key_all		=> <<SQL,
+
+SELECT addr FROM key
+
+SQL
+	key_ammo	=> <<SQL,
+
+SELECT SUM(nValue) AS ammo
+FROM tx_out
+WHERE addr = ? AND spentHeight = 0
+GROUP BY addr
+
+SQL
 );
 
 my $dbh;
@@ -115,6 +130,11 @@ sub init {
 		RaiseError	=> 1,
 		AutoCommit	=> 0,
 	});
+
+	if ($dbh->{Driver}->{Name} =~ /sqlite/i) {
+		$dbh->do ('PRAGMA synchronous = OFF');
+		$dbh->do ('PRAGMA cache_size = 20000');
+	}
 
 	while ($SCRIPT =~ /([^;]+)/g) {
 		my $str = $1;
@@ -281,9 +301,30 @@ sub key_load {
 }
 
 sub key_save {
-	my ($pub, $priv, $addr) = @_;
+	my ($key) = @_;
 
-	$sth{key_ins}->execute ($pub, $priv, $addr);
+	$key->{remark} ||= '';
+	$sth{key_ins}->execute (@$key{qw( pub priv addr remark )});
+}
+
+sub key_ammo {
+	my ($addr) = @_;
+
+	$sth{key_ammo}->execute ($addr);
+	my $h = $sth{key_ammo}->fetchrow_hashref;
+	return $h ? $h->{ammo} : 0;
+}
+
+sub key_all {
+	$sth{key_all}->execute ();
+	my @res;
+	while (my $h = $sth{key_all}->fetchrow_hashref) {
+		push @res, {
+			addr	=> $h->{addr},
+			ammo	=> key_ammo ($h->{addr}),
+		};
+	}
+	return @res;
 }
 
 sub sql {

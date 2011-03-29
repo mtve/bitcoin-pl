@@ -141,23 +141,23 @@ sub CheckTransaction {
 }
 
 sub TransactionFixOutAddr {
-	my ($tx) = @_;
+	my ($tx, $spentHeight) = @_;
 
 	for (0 .. $#{ $tx->{vout} }) {
 		my $pub = $tx->{vout}[$_]{scriptPubKey};
 		my $pub_h = GetKeyHash ($pub) or die "no pub key";
 		my $addr = base58::Hash160ToAddress ($pub_h);
 		$tx->{vout}[$_]{addr} = $addr;
-		$tx->{vout}[$_]{spentHeight} = 0;
+		$tx->{vout}[$_]{spentHeight} = $spentHeight;
 	}
 }
 
 sub AddTransaction {
-	my ($tx) = @_;
+	my ($tx, $spentHeight) = @_;
 
 	D && warn "add tx $H{$tx->{h}}";
 	return if data::tx_exists ($tx->{h});
-	TransactionFixOutAddr ($tx);
+	TransactionFixOutAddr ($tx, $spentHeight);
 	data::tx_save ($tx->{h}, $tx);
 }
 
@@ -180,7 +180,7 @@ sub ProcessTransaction {
 		return;
 	}
 
-	AddTransaction ($tx);
+	AddTransaction ($tx, -1);
 	data::blk_tx_add ($NULL256, -1, $tx->{h});
 	warn "new tx $H{$tx->{h}}";
 }
@@ -449,7 +449,7 @@ sub ProcessBlock {
 
 	CheckBlock ($blk);
 
-	AddTransaction ($_) for @{ $blk->{vtx} };
+	AddTransaction ($_, 0) for @{ $blk->{vtx} };
 	data::blk_tx_del ($NULL256, -1, $_) for @{ $blk->{vtx_h} };
 
 	$blk->{nHeight} = -1;
@@ -461,8 +461,6 @@ sub ProcessBlock {
 }
 
 sub GenesisBlock {
-	return if data::blk_exists ($GenesisHash);
-
 	my $tx0	= {
 		nVersion	=> 1,
 		vin		=> [ {
@@ -621,8 +619,9 @@ sub SignSignature {
 
 sub NewKey {
 	my $key = ecdsa::GenKey ();
-	key_save ($key->{pub}, $key->{priv},
-	    base58::PubKeyToAddress ($key->{pub}));
+	$key->{addr} = base58::PubKeyToAddress ($key->{pub});
+	data::key_save ($key);
+	data::commit ();
 	return $key;
 }
 

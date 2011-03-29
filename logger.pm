@@ -32,4 +32,16 @@ sub PRINT {
 	    $h, $m, $s, (caller 1)[3] || '?', $msg;
 }
 
+sub trace {
+	my ($msg) = @_;
+
+	my $i = 1;
+	while (caller $i) {
+		my @c = caller $i++;
+		print STDERR "trace: $c[3] at $c[1]:$c[2]";
+	}
+	print STDERR $msg;
+	exit 1;
+}
+
 1;
