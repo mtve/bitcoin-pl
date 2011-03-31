@@ -12,7 +12,6 @@ use logger;
 use base58;
 use ecdsa;
 
-our $VERSION = '110325';
 our $SQL_PAGE = 20;
 
 our $sid = base58::EncodeBase58 (
@@ -88,8 +87,8 @@ HTML
 sub page_about {
 	my $home = 'https://github.com/mtve/bitcoin-pl';
 	return <<HTML;
-<p>Version <b>$VERSION</b> running on perl $^V $^O, with ${\data::version },
-and ${\ecdsa::version }</p>
+<p>Version <b>$main::VERSION</b> running on perl $^V $^O,
+with ${\data::version }, and ${\ecdsa::version }</p>
 <p>Project home is at <a href="$home">$home</a></p>
 <p>Address for donations is <b>1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2</b></p>
 </p>

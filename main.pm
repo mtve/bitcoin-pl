@@ -156,9 +156,12 @@ sub AddTransaction {
 	my ($tx, $spentHeight) = @_;
 
 	D && warn "add tx $H{$tx->{h}}";
-	return if data::tx_exists ($tx->{h});
-	TransactionFixOutAddr ($tx, $spentHeight);
-	data::tx_save ($tx->{h}, $tx);
+	if (data::tx_exists ($tx->{h})) {
+		data::tx_out_inchain ($tx->{h}) if $spentHeight == 0;
+	} else {
+		TransactionFixOutAddr ($tx, $spentHeight);
+		data::tx_save ($tx->{h}, $tx);
+	}
 }
 
 sub TransactionHash {

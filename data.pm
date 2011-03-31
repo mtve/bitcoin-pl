@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS tx_out (
 	nValue		INTEGER NOT NULL,
 	scriptPubKey	BLOB NOT NULL,
 	addr		STRING(50) NOT NULL,
-	spentHeight	INTEGER NOT NULL
+	spentHeight	INTEGER NOT NULL	-- not in chain -1, not spent 0
 );
 
 CREATE INDEX IF NOT EXISTS tx_out_idx
@@ -100,6 +100,11 @@ SQL
 	tx_out_spent	=> <<SQL,
 
 UPDATE tx_out SET spentHeight = ? WHERE tx_hash = ? AND tx_n = ?
+
+SQL
+	tx_out_inchain	=> <<SQL,
+
+UPDATE tx_out SET spentHeight = 0 WHERE tx_hash = ? AND spentHeight = -1
 
 SQL
 	key_all		=> <<SQL,
@@ -235,6 +240,12 @@ sub tx_out_spent {
 	$sth{tx_out_spent}->execute ($height, $tx_h, $tx_n);
 }
 
+sub tx_out_inchain {
+	my ($tx_h) = @_;
+
+	$sth{tx_out_inchain}->execute ($tx_h);
+}
+
 sub blk_save {
 	my ($blk_h, $blk) = @_;
 
@@ -344,7 +355,5 @@ sub version {
 	return "DBI $DBI::VERSION " .
 	    $dbh->get_info (17) . " " . $dbh->get_info (18);
 }
-
-END { commit (); }
 
 1;
