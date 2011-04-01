@@ -8,6 +8,7 @@ use event;
 use serialize;
 use main;
 use base58;
+use util;
 
 sub D() { 1 }
 
@@ -24,7 +25,8 @@ our $MSG_BLOCK = 2;
 sub PushMessage {
 	my ($file, $cmd, $data) = @_;
 
-	D && warn "debug fileno=$file->{fileno} cmd=$cmd";
+	D && warn "debug fileno=$file->{fileno} cmd=$cmd data="
+		. serialize::Dump ($cmd, $data);
 	my $msg = serialize::Serialize ($cmd, $data);
 
 	event::timer_reset ($file->{timer_ping})
@@ -144,10 +146,23 @@ sub got_ping {
 	D && warn "debug";
 }
 
+sub PushGetData {
+	my ($file) = @_;
+
+	my @h = data::blk_missed ();
+	D && warn "debug @util::b2h{@h}";
+
+	PushMessage ($file, 'getdata', [ map +{
+		type	=> $MSG_BLOCK,
+		hash	=> $_,
+	}, @h ]) if @h;
+}
+
 sub PushGetBlocks {
 	my ($file) = @_;
 
 	my ($n, $h) = data::blk_best () or die "no best";
+	D && warn "debug $n $util::b2h{$h}";
 
 	PushMessage ($file, 'getblocks', {
 		nVersion	=> $VERSION,
@@ -166,6 +181,8 @@ sub got_verack {
 
 	D && warn "start downloading";
 	PushGetBlocks ($file);
+	D && warn "request missing blocks";
+	PushGetData ($file);
 }
 
 sub got_addr {

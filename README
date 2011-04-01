@@ -11,10 +11,10 @@ Features:
 - web interface
 - data stored in sql via DBI (sqlite by default)
 - blockchain download
+- chain branches
 
 Todo:
 - much more testing
-- chain branches
 - add web auth with roles
 - add key management and money transfer
 - full networking and multiple connections
