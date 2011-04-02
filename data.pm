@@ -294,7 +294,8 @@ sub blk_load {
 
 sub blk_best {
 	$sth{blk_best}->execute ();
-	return $sth{blk_best}->fetchrow_array;
+	my $h = $sth{blk_best}->fetchrow_hashref;
+	return $h && blk_load ($h->{hash});
 }
 
 sub blk_connect {

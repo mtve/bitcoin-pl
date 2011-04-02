@@ -138,12 +138,6 @@ sub check_sid {			# prevent xss
 sub page {
 	my ($file) = @_;
 
-	my $blocks = $main::nBestHeight;
-	warn "1";
-	my $txs = data::tx_cnt ();
-	my $keys = data::key_cnt ();
-	warn "2";
-
 	my $page = '';
 	if ($file->{http_url} =~ /(\w+)(\?|\z)(.*)/) {
 		my $mvc = "page_$1";
@@ -157,9 +151,8 @@ sub page {
 <title>Bitcoin in perl</title>
 </head><body>
 <h3><a href="http://www.bitcoin.org">Bitcoin</a> in perl</h3>
-<p>Blocks: <b>$blocks</b>,
-Transactions: <b>$txs</b>,
-Your addresses: <b>$keys</b></p>
+<p>Blocks: <b>$main::blk_best->{nHeight}</b>,
+Your addresses: <b>${\data::key_cnt () }</b></p>
 <p>
 <a href="/">Main</a> |
 <a href="/key?sid=$sid">Wallet</a> |

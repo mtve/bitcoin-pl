@@ -34,7 +34,7 @@ our $GenesisMerkleRoot = reverse pack 'H*',
 our $GenesisHash = reverse pack 'H*',
 	'000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f';
 
-our $nBestHeight = 0;
+our $blk_best = 0;
 
 sub SetCompact256 {
 	my ($nCompact) = @_;
@@ -220,7 +220,7 @@ sub IsFinal {
 	return 1 if !$tx->{nLockTime};
 	$nBlockTime ||= time;
 	return 1 if $tx->{nLockTime} <
-		($tx->{nLockTime} < 500000000 ? $nBestHeight : $nBlockTime);
+		($tx->{nLockTime} < 500000000 ? $blk_best->{nHeight} : $nBlockTime);
 	return 0 if grep $_->{nSequence} != $ONES32, @{ $tx->{vin} };
 	return 1;
 }
@@ -258,7 +258,7 @@ sub GetDepthInMainChain_ {
 
 	my $blk_h = $tx->{blk_h} or die "no block hash";
 	my $blk = data::blk_load ($blk_h) or die "no block";
-	return $nBestHeight - $blk->{nHeight} + 1;
+	return $blk_best->{nHeight} - $blk->{nHeight} + 1;
 }
 
 sub GetBlocksToMaturity_ {
@@ -279,7 +279,7 @@ sub GetBlockValue {
 	my $nSubsidy = 50 * $COIN;
 
 	# Subsidy is cut in half every 4 years
-	$nSubsidy /= 2 ** int ($nBestHeight / 210000);
+	$nSubsidy /= 2 ** int ($blk_best->{nHeight} / 210000);
 
 	D && warn "$nSubsidy + $nFees";
 	return $nSubsidy + $nFees;
@@ -409,8 +409,7 @@ sub SwitchBranch {
 	}
 
 	my @old;
-	my (undef, $best_h) = data::blk_best () or die "no best";
-	my $b = data::blk_load ($best_h) or die "best no block";
+	my $b = $blk_best;
 	while ($b->{h} ne $fork->{h}) {
 		$b->{mainBranch} or die "best not main";
 		unshift @old, $b;
@@ -446,17 +445,17 @@ sub ReconnectBlock {
 		$blk->{nHeight} = $prev && $prev->{nHeight} >= 0 ?
 		    $prev->{nHeight} + 1 : -1;
 		$blk->{mainBranch} = $prev && $prev->{mainBranch} &&
-		    $blk->{nHeight} > $nBestHeight ? 1 : 0;
+		    $blk->{nHeight} > $blk_best->{nHeight} ? 1 : 0;
 	}
 
 	data::blk_connect ($blk);
 	if ($blk->{mainBranch}) {
 		SpentBlock ($blk);
-	} elsif ($blk->{nHeight} > $nBestHeight) {
+	} elsif ($blk->{nHeight} > $blk_best->{nHeight}) {
 		SwitchBranch ($blk);
 	}
 
-	$nBestHeight = $blk->{nHeight} if $blk->{nHeight} > $nBestHeight;
+	$blk_best = $blk if $blk->{nHeight} > $blk_best->{nHeight};
 
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
 		"block $util::b2h{$blk->{h}}";
@@ -539,7 +538,7 @@ sub GenesisBlock {
 
 sub init () {
 	ProcessBlock (GenesisBlock ());
-	($nBestHeight) = data::blk_best () or die "no best";
+	$blk_best = data::blk_best () or die "no best";
 }
 
 #

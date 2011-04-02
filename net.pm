@@ -161,12 +161,9 @@ sub PushGetData {
 sub PushGetBlocks {
 	my ($file) = @_;
 
-	my ($n, $h) = data::blk_best () or die "no best";
-	D && warn "debug $n $util::b2h{$h}";
-
 	PushMessage ($file, 'getblocks', {
 		nVersion	=> $VERSION,
-		locator		=> [ $h ],
+		locator		=> [ $main::blk_best->{h} ],
 		hashStop	=> $main::NULL256,
 	});
 }
