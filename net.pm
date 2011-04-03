@@ -177,7 +177,6 @@ sub got_verack {
 	$file->{has_crc} = 1;
 
 	D && warn "start downloading";
-	$file->{bc_start_height} = $main::blk_best->{nHeight};
 	PushGetBlocks ($file);
 }
 
@@ -220,8 +219,8 @@ sub got_block {
 		or die "bad version $blk->{nVersion}";
 
 	if (!main::ProcessBlock ($blk)) {
-		$main::blk_best->{nHeight} - $file->{bc_start_height} <= 500 ?
-		    PushGetBlocks ($file) : PushGetData ($file);
+		# orphaned, continue download on first, or get missing blocks
+		$file->{bc_dl}++ ? PushGetData ($file) : PushGetBlocks ($file);
 	}
 }
 
