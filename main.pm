@@ -417,10 +417,10 @@ sub SwitchBranch {
 	}
 
 	D && warn "fork $util::b2h{$fork->{h}}" .
-		" old @util::b2h{map $_->{h}, @old}" .
-		" new @util::b2h{map $_->{h}, @new}";
+		" old (@util::b2h{map $_->{h}, @old})" .
+		" new (@util::b2h{map $_->{h}, @new})";
 
-	data::tx_out_unspent ($fork->{nHeight} + 1);
+	data::tx_out_unspent ($fork->{nHeight} + 1) if @old;
 	for (@old) {
 		$_->{mainBranch} = 0;
 		data::blk_connect ($_);
@@ -444,18 +444,17 @@ sub ReconnectBlock {
 		my $prev = data::blk_load ($blk->{hashPrevBlock});
 		$blk->{nHeight} = $prev && $prev->{nHeight} >= 0 ?
 		    $prev->{nHeight} + 1 : -1;
-		$blk->{mainBranch} = $prev && $prev->{mainBranch} &&
-		    $blk->{nHeight} > $blk_best->{nHeight} ? 1 : 0;
+		$blk->{mainBranch} = 0;
 	}
 
-	data::blk_connect ($blk);
-	if ($blk->{mainBranch}) {
-		SpentBlock ($blk);
-	} elsif ($blk->{nHeight} > $blk_best->{nHeight}) {
+	if ($blk_best && $blk->{nHeight} > $blk_best->{nHeight}) {
 		SwitchBranch ($blk);
+	} else {
+		data::blk_connect ($blk);
 	}
 
-	$blk_best = $blk if $blk->{nHeight} > $blk_best->{nHeight};
+	$blk_best = $blk
+		if !$blk_best || $blk->{nHeight} > $blk_best->{nHeight};
 
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
 		"block $util::b2h{$blk->{h}}";

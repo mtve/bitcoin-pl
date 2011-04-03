@@ -177,9 +177,8 @@ sub got_verack {
 	$file->{has_crc} = 1;
 
 	D && warn "start downloading";
+	$file->{bc_start_height} = $main::blk_best->{nHeight};
 	PushGetBlocks ($file);
-	D && warn "request missing blocks";
-	PushGetData ($file);
 }
 
 sub got_addr {
@@ -220,7 +219,10 @@ sub got_block {
 	$blk->{nVersion} == 1
 		or die "bad version $blk->{nVersion}";
 
-	PushGetBlocks ($file) if !main::ProcessBlock ($blk);
+	if (!main::ProcessBlock ($blk)) {
+		$main::blk_best->{nHeight} - $file->{bc_start_height} <= 500 ?
+		    PushGetBlocks ($file) : PushGetData ($file);
+	}
 }
 
 sub got_tx {
