@@ -426,9 +426,9 @@ sub SwitchBranch {
 		data::blk_connect ($_);
 	}
 	for (@new) {
+		SpentBlock ($_);
 		$_->{mainBranch} = 1;
 		data::blk_connect ($_);
-		SpentBlock ($_);
 	}
 }
 
