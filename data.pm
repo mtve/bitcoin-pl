@@ -111,7 +111,7 @@ SQL
 
 SELECT SUM(nValue) AS ammo
 FROM tx_out
-WHERE addr = ? AND spentHeight = 0
+WHERE addr = ? AND spentHeight = -1
 GROUP BY addr
 
 SQL
