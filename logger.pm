@@ -17,7 +17,7 @@ sub rotate {
 	select $fh; $|++; select STDOUT;
 	$! = 0;
 	tie *STDERR, __PACKAGE__;
-	warn "log rotated at " . localtime () . "\n";
+	warn "log rotated at ${\scalar localtime}\n";
 }
 
 sub TIEHANDLE { bless {} }

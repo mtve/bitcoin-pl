@@ -154,8 +154,9 @@ sub Dump {
 			$type eq 'Net16' ||
 			$type eq 'IP' ||
 				0 ? $value :
-			$type eq 'Str' ||
 			$type eq 'Bin256' ||
+				0 ? unpack 'H*', reverse $value :
+			$type eq 'Str' ||
 			$type =~ /^\d+\z/ ||
 				0 ? unpack 'H*', $value :
 			$type eq '' ? '' :

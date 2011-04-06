@@ -44,13 +44,15 @@ CREATE TABLE IF NOT EXISTS tx_out (
 	nValue		INTEGER NOT NULL,
 	scriptPubKey	BLOB NOT NULL,
 	addr		STRING(50) NOT NULL,
-	spentHeight	INTEGER NOT NULL
+	spentHeight	INTEGER NOT NULL	-- not in chain -1, not spent 0
 );
 
 CREATE INDEX IF NOT EXISTS tx_out_idx
 	ON tx_out (tx_hash, tx_n);
 CREATE INDEX IF NOT EXISTS tx_out_idx2
-	ON tx_out (addr, spentHeight);
+	ON tx_out (addr);
+CREATE INDEX IF NOT EXISTS tx_out_idx3
+	ON tx_out (spentHeight);
 
 CREATE TABLE IF NOT EXISTS blk (
 	hash		BLOB(32) PRIMARY KEY,
@@ -92,6 +94,11 @@ SQL
 SELECT hash FROM blk WHERE nHeight = -1 AND hashPrevBlock = ?
 
 SQL
+	blk_orphans	=> <<SQL,
+
+SELECT hash, hashPrevBlock FROM blk WHERE nHeight = -1
+
+SQL
 	blk_tx_del	=> <<SQL,
 
 DELETE FROM blk_tx WHERE blk_hash = ? AND blk_n = ? AND tx_hash = ?
@@ -100,6 +107,16 @@ SQL
 	tx_out_spent	=> <<SQL,
 
 UPDATE tx_out SET spentHeight = ? WHERE tx_hash = ? AND tx_n = ?
+
+SQL
+	tx_out_unspent	=> <<SQL,
+
+UPDATE tx_out SET spentHeight = 0 WHERE spentHeight >= ?
+
+SQL
+	tx_out_inchain	=> <<SQL,
+
+UPDATE tx_out SET spentHeight = 0 WHERE tx_hash = ? AND spentHeight = -1
 
 SQL
 	key_all		=> <<SQL,
@@ -235,6 +252,18 @@ sub tx_out_spent {
 	$sth{tx_out_spent}->execute ($height, $tx_h, $tx_n);
 }
 
+sub tx_out_unspent {
+	my ($height) = @_;
+
+	$sth{tx_out_unspent}->execute ($height);
+}
+
+sub tx_out_inchain {
+	my ($tx_h) = @_;
+
+	$sth{tx_out_inchain}->execute ($tx_h);
+}
+
 sub blk_save {
 	my ($blk_h, $blk) = @_;
 
@@ -265,7 +294,8 @@ sub blk_load {
 
 sub blk_best {
 	$sth{blk_best}->execute ();
-	return $sth{blk_best}->fetchrow_array;
+	my $h = $sth{blk_best}->fetchrow_hashref;
+	return $h && blk_load ($h->{hash});
 }
 
 sub blk_connect {
@@ -279,6 +309,15 @@ sub blk_orphan {
 
 	$sth{blk_orphan}->execute ($blk_h);
 	return map $_->[0], @{ $sth{blk_orphan}->fetchall_arrayref };
+}
+
+sub blk_missed {
+	$sth{blk_orphans}->execute ();
+        my %prev = ();
+	while (my $h = $sth{blk_orphans}->fetchrow_hashref) {
+		$prev{ $h->{hash} } = $h->{hashPrevBlock};
+	}
+	return grep !exists $prev{$_}, values %prev;
 }
 
 sub blk_tx_add {
@@ -344,7 +383,5 @@ sub version {
 	return "DBI $DBI::VERSION " .
 	    $dbh->get_info (17) . " " . $dbh->get_info (18);
 }
-
-END { commit (); }
 
 1;

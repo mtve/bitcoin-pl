@@ -11,23 +11,14 @@ use data;
 use logger;
 use base58;
 use ecdsa;
+use util;
 
 our $VERSION = '110406';
+
 our $SQL_PAGE = 20;
 
 our $sid = base58::EncodeBase58 (
     substr (base58::sha256 ("$$ @{[ (stat $0)[1,4,5,7,9] ]}"), 0, 8));
-
-sub html_esc'TIEHASH { bless {}, $_[0] }
-
-sub html_esc'FETCH {
-	my (undef, $str) = @_;
-
-	s/&/&amp;/g, s/</&lt;/g, s/>/&gt;/g, s/"/&quot;/g for $str;
-	return $str;
-}
-
-tie my %H, 'html_esc';
 
 sub http_params {
 	my ($params) = @_;
@@ -51,7 +42,7 @@ sub page_sql {
 		my $res = eval { data::sql ($sql, $SQL_PAGE) };
 		if ($@) {
 			$html = <<HTML;
-<p><font color="#FF0000">Error: $H{$@}</font></p>
+<p><font color="#FF0000">Error: $util::hesc{$@}</font></p>
 HTML
 		} elsif (!@$res) {
 			$html = <<HTML;
@@ -61,10 +52,10 @@ HTML
 			my @col = sort keys %{ $res->[0] };
 			$html = <<HTML;
 <table border="1">
-<tr>@{[ map "<td><b>$H{$_}</b></td>", @col ]}</tr>
+<tr>@{[ map "<td><b>$util::hesc{$_}</b></td>", @col ]}</tr>
 HTML
 			$html .= <<HTML for @$res;
-<tr>@{[ map "<td>$H{$_ =~ /[^ -~]/ ? unpack 'H*', reverse : $_ }</td>",
+<tr>@{[ map "<td>$util::hesc{ /[^ -~]/ ? $util::b2h{$_} : $_ }</td>",
 	@$_{@col} ]}</tr>
 HTML
 			$html .= <<HTML;
@@ -76,7 +67,7 @@ HTML
 	return <<HTML;
 <form action="/sql" method="get">
 <p>Free form SQL query (dangerous!) :
-<input type="text" name="sql" value="$H{$sql}">
+<input type="text" name="sql" value="$util::hesc{$sql}">
 <input type="hidden" name="sid" value="$sid">
 <input type="submit" value="Execute">
 </p>
@@ -88,8 +79,8 @@ HTML
 sub page_about {
 	my $home = 'https://github.com/mtve/bitcoin-pl';
 	return <<HTML;
-<p>Version <b>$VERSION</b> running on perl $^V $^O, with ${\data::version },
-and ${\ecdsa::version }</p>
+<p>Version <b>$main::VERSION</b> running on perl $^V $^O,
+with ${\data::version }, and ${\ecdsa::version }</p>
 <p>Project home is at <a href="$home">$home</a></p>
 <p>Address for donations is <b>1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2</b></p>
 </p>
@@ -149,10 +140,6 @@ sub check_sid {			# prevent xss
 sub page {
 	my ($file) = @_;
 
-	my $blocks = $main::nBestHeight;
-	my $txs = data::tx_cnt ();
-	my $keys = data::key_cnt ();
-
 	my $page = '';
 	if ($file->{http_url} =~ /(\w+)(\?|\z)(.*)/) {
 		my $mvc = "page_$1";
@@ -166,9 +153,8 @@ sub page {
 <title>Bitcoin in perl</title>
 </head><body>
 <h3><a href="http://www.bitcoin.org">Bitcoin</a> in perl</h3>
-<p>Blocks: <b>$blocks</b>,
-Transactions: <b>$txs</b>,
-Your addresses: <b>$keys</b></p>
+<p>Blocks: <b>$main::blk_best->{nHeight}</b>,
+Your addresses: <b>${\data::key_cnt () }</b></p>
 <p>
 <a href="/">Main</a> |
 <a href="/key?sid=$sid">Wallet</a> |
