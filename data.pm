@@ -121,7 +121,7 @@ UPDATE tx_out SET spentHeight = 0 WHERE tx_hash = ? AND spentHeight = -1
 SQL
 	key_all		=> <<SQL,
 
-SELECT addr FROM key
+SELECT addr, remark FROM key
 
 SQL
 	key_ammo	=> <<SQL,
@@ -360,6 +360,7 @@ sub key_all {
 	while (my $h = $sth{key_all}->fetchrow_hashref) {
 		push @res, {
 			addr	=> $h->{addr},
+			remark	=> $h->{remark},
 			ammo	=> key_ammo ($h->{addr}),
 		};
 	}

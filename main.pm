@@ -36,6 +36,12 @@ our $GenesisHash = reverse pack 'H*',
 
 our $blk_best = 0;
 
+sub AmmoFormat {
+	my ($ammo) = @_;
+
+	$ammo / $COIN;
+}
+
 sub SetCompact256 {
 	my ($nCompact) = @_;
 
@@ -655,6 +661,7 @@ sub SignSignature {
 sub NewKey {
 	my $key = ecdsa::GenKey ();
 	$key->{addr} = base58::PubKeyToAddress ($key->{pub});
+	$key->{remark} = "generated at " . localtime;
 	data::key_save ($key);
 	data::commit ();
 	return $key;

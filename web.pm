@@ -26,6 +26,7 @@ sub http_params {
 		my ($a, $b) = /^([^=]*)=?(.*)\z/ or next;
 		y/+/ /, s/%([0-9a-f]{2})/pack 'C', hex $1/ieg
 			for $a, $b;
+		$b =~ s/^\s+|\s+\z//g;
 		$par{$a} = decode ('utf8', $b);
 	}
 	return \%par;
@@ -85,6 +86,45 @@ with ${\data::version }, and ${\ecdsa::version }</p>
 HTML
 }
 
+sub key_imp {
+	my ($file) = @_;
+
+	my $priv = $file->{http_param}{priv} || '';
+	if ($priv =~ /^[0-9a-f]+\z/) {
+		$priv = pack 'H*', $priv;
+		my $pub = ecdsa::pub_encode (ecdsa::pub_from_priv (
+		    ecdsa::i_decode ($priv)));
+		my $addr = base58::PubKeyToAddress ($pub);
+		eval { data::key_save ({
+			priv	=> $priv,
+			pub	=> $pub,
+			addr	=> $addr,
+			remark	=> "imported at " . localtime,
+		}); };
+		return <<HTML if $@;
+<p><font color="#FF0000">Key with address <b>$addr</b> import
+failed: $util::hesc{$@}</font></p>
+HTML
+		data::commit ();
+
+		return <<HTML;
+<p>Key with address <b>$addr</b> imported.</p>
+HTML
+	} else {
+		my $err = $priv ? '<font color="#FF0000">bad format</font>' : '';
+		return <<HTML;
+<form action="/key" method="get">
+<p>Enter hexadecimal private key :
+<input type="text" name="priv" value="$util::hesc{$priv}"> $err
+<input type="hidden" name="sid" value="$sid">
+<input type="hidden" name="func" value="imp">
+<input type="submit" value="Add key">
+</p>
+</form>
+HTML
+	}
+}
+
 sub key_gen {
 	my $key = main::NewKey ();
 
@@ -101,10 +141,14 @@ sub page_key {
 
 	my $keys = '';
 	$keys .= <<HTML for data::key_all ();
-<tr><td>$_->{addr}</td><td align="right">$_->{ammo}</td></tr>
+<tr>
+<td>$_->{addr}</td>
+<td align="right">${\main::AmmoFormat ($_->{ammo}) }</td>
+<td>$_->{remark}</td>
+</tr>
 HTML
 	$keys = <<HTML if !$keys;
-<tr><td colspan="2"><i>no keys</i></td></tr>
+<tr><td colspan="3"><i>no keys</i></td></tr>
 HTML
 	return <<HTML;
 <p><a href="/key?sid=$sid">List</a> |
@@ -114,7 +158,9 @@ HTML
 $func
 <table border="1"><tr>
 <td><b>Address</b></td>
-<td><b>Amount</b></td></tr>
+<td><b>Amount</b></td>
+<td><b>Remark</b></td>
+</tr>
 $keys
 </table>
 HTML
