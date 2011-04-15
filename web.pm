@@ -65,8 +65,8 @@ HTML
 
 	return <<HTML;
 <form action="/sql" method="get">
-<p>Free form SQL query (dangerous!) :
-<input type="text" name="sql" value="$util::hesc{$sql}">
+<p>Free form SQL query (dangerous!):<br>
+<textarea name="sql" rows="10" cols="60">$util::hesc{$sql}</textarea>
 <input type="hidden" name="sid" value="$sid">
 <input type="submit" value="Execute">
 </p>
@@ -81,6 +81,7 @@ sub page_about {
 <p>Version <b>$main::VERSION</b> running on perl $^V $^O,
 with ${\data::version }, and ${\ecdsa::version }</p>
 <p>Project home is at <a href="$home">$home</a></p>
+<p><b>$main::CONFIRMATIONS</b> blocks in main chain to confirm transaction.</p>
 <p>Address for donations is <b>1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2</b></p>
 </p>
 HTML
@@ -91,6 +92,9 @@ sub key_imp {
 
 	my $priv = $file->{http_param}{priv} || '';
 	if ($priv =~ /^[0-9a-f]+\z/) {
+		return <<HTML if $priv =~ /^0+\z/;
+<p>Zero key wont work</p>
+HTML
 		$priv = pack 'H*', $priv;
 		my $pub = ecdsa::pub_encode (ecdsa::pub_from_priv (
 		    ecdsa::i_decode ($priv)));
@@ -114,7 +118,7 @@ HTML
 		my $err = $priv ? '<font color="#FF0000">bad format</font>' : '';
 		return <<HTML;
 <form action="/key" method="get">
-<p>Enter hexadecimal private key :
+<p>Enter 32 hexadecimal bytes of private key:
 <input type="text" name="priv" value="$util::hesc{$priv}"> $err
 <input type="hidden" name="sid" value="$sid">
 <input type="hidden" name="func" value="imp">
@@ -140,15 +144,19 @@ sub page_key {
 	my $func = do { no strict 'refs'; exists &$f ? &$f ($file) : '' };
 
 	my $keys = '';
-	$keys .= <<HTML for data::key_all ();
+	$keys .= <<HTML for data::key_all (main::ConfirmHeight ());
 <tr>
 <td>$_->{addr}</td>
 <td align="right">${\main::AmmoFormat ($_->{ammo}) }</td>
+<td align="right">@{[
+	$_->{ammo_plus}  ? "+" . main::AmmoFormat ($_->{ammo_plus})  : '',
+	$_->{ammo_minus} ? "-" . main::AmmoFormat ($_->{ammo_minus}) : '',
+]}</td>
 <td>$_->{remark}</td>
 </tr>
 HTML
 	$keys = <<HTML if !$keys;
-<tr><td colspan="3"><i>no keys</i></td></tr>
+<tr><td colspan="4"><i>no keys</i></td></tr>
 HTML
 	return <<HTML;
 <p><a href="/key?sid=$sid">List</a> |
@@ -159,6 +167,7 @@ $func
 <table border="1"><tr>
 <td><b>Address</b></td>
 <td><b>Amount</b></td>
+<td><b>Unconfirmed</b></td>
 <td><b>Remark</b></td>
 </tr>
 $keys
