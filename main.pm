@@ -13,11 +13,12 @@ use util;
 sub D() { 1 }
 sub DD() { 0 }
 
+our $CONFIRMATIONS = 10;
+
 our $COIN = 100000000;
 our $CENT = 1000000;
 our $COINBASE_MATURITY = 100;
 our $nTransactionFee = 0;
-
 our $bnProofOfWorkLimit_bits = 32;
 our $bnProofOfWorkLimit = ~pack 'B256', '0' x $bnProofOfWorkLimit_bits;
 
@@ -35,6 +36,16 @@ our $GenesisHash = reverse pack 'H*',
 	'000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f';
 
 our $blk_best = 0;
+
+sub AmmoFormat {
+	my ($ammo) = @_;
+
+	$ammo / $COIN;
+}
+
+sub ConfirmHeight {
+	$main::blk_best->{nHeight} - $CONFIRMATIONS;
+}
 
 sub SetCompact256 {
 	my ($nCompact) = @_;
@@ -76,7 +87,7 @@ sub TransactionIncome {
 		$nOut < @{ $txFrom->{vout} }
 			or die "bad n $nOut";
 
-		$txFrom->{vout}[$nOut]{spentHeight} == 0
+		$txFrom->{vout}[$nOut]{spentHeight} == -1
 			or die "double spend";
 		$spent->{$txFrom_h}{$nOut}++ == 0
 			or die "double spend in the same block";
@@ -139,25 +150,23 @@ sub CheckTransaction {
 }
 
 sub TransactionFixOutAddr {
-	my ($tx, $spentHeight) = @_;
+	my ($tx) = @_;
 
 	for (0 .. $#{ $tx->{vout} }) {
 		my $pub = $tx->{vout}[$_]{scriptPubKey};
 		my $pub_h = GetKeyHash ($pub) or die "no pub key";
 		my $addr = base58::Hash160ToAddress ($pub_h);
 		$tx->{vout}[$_]{addr} = $addr;
-		$tx->{vout}[$_]{spentHeight} = $spentHeight;
+		$tx->{vout}[$_]{spentHeight} = -1;
 	}
 }
 
 sub AddTransaction {
-	my ($tx, $spentHeight) = @_;
+	my ($tx) = @_;
 
 	D && warn "add tx $util::b2h{$tx->{h}}";
-	if (data::tx_exists ($tx->{h})) {
-		data::tx_out_inchain ($tx->{h}) if $spentHeight == 0;
-	} else {
-		TransactionFixOutAddr ($tx, $spentHeight);
+	if (!data::tx_exists ($tx->{h})) {
+		TransactionFixOutAddr ($tx);
 		data::tx_save ($tx->{h}, $tx);
 	}
 }
@@ -181,7 +190,7 @@ sub ProcessTransaction {
 		return;
 	}
 
-	AddTransaction ($tx, -1);
+	AddTransaction ($tx);
 	data::blk_tx_add ($NULL256, -1, $tx->{h});
 	warn "new tx $util::b2h{$tx->{h}}";
 }
@@ -420,7 +429,7 @@ sub SwitchBranch {
 		" old (@util::b2h{map $_->{h}, @old})" .
 		" new (@util::b2h{map $_->{h}, @new})";
 
-	data::tx_out_unspent ($fork->{nHeight} + 1) if @old;
+	data::tx_trimmain ($fork->{nHeight} + 1) if @old;
 	for (@old) {
 		$_->{mainBranch} = 0;
 		data::blk_connect ($_);
@@ -484,7 +493,7 @@ sub ProcessBlock {
 
 	CheckBlock ($blk);
 
-	AddTransaction ($_, 0) for @{ $blk->{vtx} };
+	AddTransaction ($_) for @{ $blk->{vtx} };
 	data::blk_tx_del ($NULL256, -1, $_) for @{ $blk->{vtx_h} };
 
 	$blk->{nHeight} = -1;
@@ -538,6 +547,7 @@ sub GenesisBlock {
 sub init () {
 	ProcessBlock (GenesisBlock ());
 	$blk_best = data::blk_best () or die "no best";
+	warn "best $blk_best->{nHeight} $util::b2h{$blk_best->{h}}";
 }
 
 #
@@ -655,6 +665,7 @@ sub SignSignature {
 sub NewKey {
 	my $key = ecdsa::GenKey ();
 	$key->{addr} = base58::PubKeyToAddress ($key->{pub});
+	$key->{remark} = "generated at " . localtime;
 	data::key_save ($key);
 	data::commit ();
 	return $key;

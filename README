@@ -12,11 +12,13 @@ Features:
 - data stored in sql via DBI (sqlite by default)
 - blockchain download
 - chain branches
+- key management with confirmed amount and unconfirmed delta
 
 Todo:
-- much more testing
-- add web auth with roles
-- add key management and money transfer
+- testing
+- web blockexplorer like browse
+- web auth with roles
+- money transfer
 - full networking and multiple connections
 - getwork rpc for miners
 - fix serialize.pm for "32-bit perl"

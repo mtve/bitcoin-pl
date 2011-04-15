@@ -7,8 +7,6 @@ use warnings;
 use strict;
 use Math::BigInt try => 'GMP,Pari';
 
-use logger;
-
 our $PROB_VERIFY = .001;	# speed hack
 
 sub D() { 1 }

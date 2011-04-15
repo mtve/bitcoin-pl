@@ -10,7 +10,7 @@ use web;
 use net;
 use event;
 
-our $VERSION = '110325';
+our $VERSION = '110415';
 
 print "welcome to bitcoin perl v$VERSION\n";
 logger::rotate ();

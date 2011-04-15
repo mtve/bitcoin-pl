@@ -23,8 +23,11 @@ CREATE TABLE IF NOT EXISTS key (
 
 CREATE TABLE IF NOT EXISTS tx (
 	hash		BLOB(32) PRIMARY KEY,
-	nLockTime	INTEGER NOT NULL
+	nLockTime	INTEGER NOT NULL,
+	mainHeight	INTEGER NOT NULL	-- not in main chain -1
 );
+
+CREATE INDEX IF NOT EXISTS tx_idx1 ON tx (mainHeight);
 
 CREATE TABLE IF NOT EXISTS tx_in (
 	tx_hash		BLOB(32) NOT NULL,
@@ -35,8 +38,8 @@ CREATE TABLE IF NOT EXISTS tx_in (
 	nSequence	INTEGER NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS tx_in_idx
-	ON tx_in (tx_hash, tx_n);
+CREATE INDEX IF NOT EXISTS tx_in_idx1 ON tx_in (tx_hash);
+CREATE INDEX IF NOT EXISTS tx_in_idx2 ON tx_in (prev_hash);
 
 CREATE TABLE IF NOT EXISTS tx_out (
 	tx_hash		BLOB(32) NOT NULL,
@@ -44,15 +47,12 @@ CREATE TABLE IF NOT EXISTS tx_out (
 	nValue		INTEGER NOT NULL,
 	scriptPubKey	BLOB NOT NULL,
 	addr		STRING(50) NOT NULL,
-	spentHeight	INTEGER NOT NULL	-- not in chain -1, not spent 0
+	spentHeight	INTEGER NOT NULL	-- not spent -1
 );
 
-CREATE INDEX IF NOT EXISTS tx_out_idx
-	ON tx_out (tx_hash, tx_n);
-CREATE INDEX IF NOT EXISTS tx_out_idx2
-	ON tx_out (addr);
-CREATE INDEX IF NOT EXISTS tx_out_idx3
-	ON tx_out (spentHeight);
+CREATE INDEX IF NOT EXISTS tx_out_idx1 ON tx_out (tx_hash);
+CREATE INDEX IF NOT EXISTS tx_out_idx2 ON tx_out (addr);
+CREATE INDEX IF NOT EXISTS tx_out_idx3 ON tx_out (spentHeight);
 
 CREATE TABLE IF NOT EXISTS blk (
 	hash		BLOB(32) PRIMARY KEY,
@@ -60,28 +60,32 @@ CREATE TABLE IF NOT EXISTS blk (
 	nTime		INTEGER NOT NULL,
 	nBits		INTEGER NOT NULL,
 	nNonce		INTEGER NOT NULL,
-	nHeight		INTEGER NOT NULL,	-- orphan is -1
+	nHeight		INTEGER NOT NULL,	-- orphan -1
 	mainBranch	INTEGER NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS blk_idx
-	ON blk (nHeight, mainBranch);
+CREATE INDEX IF NOT EXISTS blk_idx1 ON blk (nHeight);
+CREATE INDEX IF NOT EXISTS blk_idx2 ON blk (mainBranch);
 
 CREATE TABLE IF NOT EXISTS blk_tx (
 	blk_hash	BLOB(32) NOT NULL,
-	blk_n		INTEGER NOT NULL,	-- new tx is -1
+	blk_n		INTEGER NOT NULL,	-- new tx -1
 	tx_hash		BLOB(32) NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS blk_tx_idx
-	ON blk_tx (blk_hash, blk_n);
+CREATE INDEX IF NOT EXISTS blk_tx_idx1 ON blk_tx (blk_hash);
+CREATE INDEX IF NOT EXISTS blk_tx_idx2 ON blk_tx (blk_n);
+CREATE INDEX IF NOT EXISTS blk_tx_idx3 ON blk_tx (tx_hash);
 
 SQL
 
 my %STH = (
 	blk_best	=> <<SQL,
 
-SELECT MAX(nHeight), hash FROM blk WHERE mainBranch = 1
+SELECT	hash
+FROM	blk
+WHERE	mainBranch = 1 AND
+	nHeight = (SELECT MAX(nHeight) FROM blk WHERE mainBranch = 1)
 
 SQL
 	blk_connect	=> <<SQL,
@@ -104,6 +108,16 @@ SQL
 DELETE FROM blk_tx WHERE blk_hash = ? AND blk_n = ? AND tx_hash = ?
 
 SQL
+	tx_unmain	=> <<SQL,
+
+UPDATE tx SET mainHeight = -1 WHERE mainHeight >= ?
+
+SQL
+	tx_main		=> <<SQL,
+
+UPDATE tx SET mainHeight = ? WHERE hash = ? AND mainHeight = -1
+
+SQL
 	tx_out_spent	=> <<SQL,
 
 UPDATE tx_out SET spentHeight = ? WHERE tx_hash = ? AND tx_n = ?
@@ -111,25 +125,44 @@ UPDATE tx_out SET spentHeight = ? WHERE tx_hash = ? AND tx_n = ?
 SQL
 	tx_out_unspent	=> <<SQL,
 
-UPDATE tx_out SET spentHeight = 0 WHERE spentHeight >= ?
-
-SQL
-	tx_out_inchain	=> <<SQL,
-
-UPDATE tx_out SET spentHeight = 0 WHERE tx_hash = ? AND spentHeight = -1
+UPDATE tx_out SET spentHeight = -1 WHERE spentHeight >= ?
 
 SQL
 	key_all		=> <<SQL,
 
-SELECT addr FROM key
+SELECT addr, remark FROM key
 
 SQL
 	key_ammo	=> <<SQL,
 
-SELECT SUM(nValue) AS ammo
-FROM tx_out
-WHERE addr = ? AND spentHeight = 0
-GROUP BY addr
+SELECT	SUM(tx_out.nValue) AS ammo
+FROM	tx_out, tx
+WHERE	tx_out.addr = ? AND
+	tx_out.tx_hash == tx.hash AND
+	tx.mainHeight >= 0 AND
+	tx.mainHeight <= ? AND
+	tx_out.spentHeight = -1
+
+SQL
+	key_ammo_plus	=> <<SQL,
+
+SELECT	SUM(tx_out.nValue) AS ammo
+FROM	tx_out, tx
+WHERE	tx_out.addr = ? AND
+	tx_out.tx_hash == tx.hash AND
+	(tx.mainHeight == -1 OR tx.mainHeight > ?) AND
+	tx_out.spentHeight = -1
+
+SQL
+	key_ammo_minus	=> <<SQL,
+
+SELECT	SUM(tx_out.nValue) AS ammo
+FROM	tx_in, tx, tx_out
+WHERE	tx_out.addr = ? AND
+	tx_out.tx_hash = tx_in.prev_hash AND
+	tx_out.tx_n = tx_in.prev_n AND
+	tx_in.tx_hash = tx.hash AND
+	(tx.mainHeight == -1 OR tx.mainHeight > ?)
 
 SQL
 );
@@ -203,7 +236,7 @@ SQL
 sub tx_save {
 	my ($tx_h, $tx) = @_;
 
-	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime});
+	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime}, -1);
 	for (0 .. $#{ $tx->{vin} }) {
 		my $i = $tx->{vin}[$_];
 		$sth{tx_in_ins}->execute ($tx_h, $_, $i->{prevout}{hash},
@@ -252,16 +285,11 @@ sub tx_out_spent {
 	$sth{tx_out_spent}->execute ($height, $tx_h, $tx_n);
 }
 
-sub tx_out_unspent {
+sub tx_trimmain {
 	my ($height) = @_;
 
 	$sth{tx_out_unspent}->execute ($height);
-}
-
-sub tx_out_inchain {
-	my ($tx_h) = @_;
-
-	$sth{tx_out_inchain}->execute ($tx_h);
+	$sth{tx_unmain}->execute ($height);
 }
 
 sub blk_save {
@@ -302,6 +330,11 @@ sub blk_connect {
 	my ($blk) = @_;
 
 	$sth{blk_connect}->execute (@$blk{qw( nHeight mainBranch h )});
+
+	if ($blk->{mainBranch}) {
+		$sth{tx_main}->execute ($blk->{nHeight}, $_)
+			for @{ $blk->{vtx_h} };
+	}
 }
 
 sub blk_orphan {
@@ -347,21 +380,26 @@ sub key_save {
 }
 
 sub key_ammo {
-	my ($addr) = @_;
+	my ($addr, $height) = @_;
 
-	$sth{key_ammo}->execute ($addr);
-	my $h = $sth{key_ammo}->fetchrow_hashref;
-	return $h ? $h->{ammo} : 0;
+	my %res;
+	for (qw( ammo ammo_plus ammo_minus )) {
+		$sth{"key_$_"}->execute ($addr, $height);
+		my $h = $sth{"key_$_"}->fetchrow_hashref;
+		$res{$_} = $h ? $h->{ammo} : 0;
+	}
+	return \%res;
 }
 
 sub key_all {
+	my ($height) = @_;
+
 	$sth{key_all}->execute ();
 	my @res;
 	while (my $h = $sth{key_all}->fetchrow_hashref) {
-		push @res, {
-			addr	=> $h->{addr},
-			ammo	=> key_ammo ($h->{addr}),
-		};
+		my $res = key_ammo ($h->{addr}, $height);
+		$res->{$_} = $h->{$_} for qw( addr remark );
+		push @res, $res;
 	}
 	return @res;
 }
