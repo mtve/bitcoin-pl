@@ -133,27 +133,34 @@ SQL
 SELECT addr, remark FROM key
 
 SQL
+	# all txes to our addr,
+	# in main branch below some height and 
+	# not spent yet or spent above some height
 	key_ammo	=> <<SQL,
 
 SELECT	SUM(tx_out.nValue) AS ammo
 FROM	tx_out, tx
 WHERE	tx_out.addr = ? AND
 	tx_out.tx_hash == tx.hash AND
-	tx.mainHeight >= 0 AND
-	tx.mainHeight <= ? AND
-	tx_out.spentHeight = -1
+	tx.mainHeight >= 0 AND tx.mainHeight <= ? AND
+	(tx_out.spentHeight = -1 OR tx_out.spentHeight > ?)
 
 SQL
+	# all txes to our addr,
+	# not in main branch yet
+	# or above some height
 	key_ammo_plus	=> <<SQL,
 
 SELECT	SUM(tx_out.nValue) AS ammo
 FROM	tx_out, tx
 WHERE	tx_out.addr = ? AND
 	tx_out.tx_hash == tx.hash AND
-	(tx.mainHeight == -1 OR tx.mainHeight > ?) AND
-	tx_out.spentHeight = -1
+	(tx.mainHeight == -1 OR tx.mainHeight > ?)
 
 SQL
+	# all txes(out) for our addr
+	# that have spent txes(in)
+	# that are not in main brahch yet or above some height
 	key_ammo_minus	=> <<SQL,
 
 SELECT	SUM(tx_out.nValue) AS ammo
@@ -210,7 +217,7 @@ SQL
 		$row[1] ||= 1;
 
 		$sth{"$table\_sel"} = $dbh->prepare (<<SQL);
-SELECT @row[1 .. $#row] FROM $table WHERE $row[0] = ?
+SELECT @row FROM $table WHERE $row[0] = ?
 SQL
 
 		no strict 'refs';
@@ -274,7 +281,7 @@ sub tx_load {
 		$tx->{vout}[ $h->{tx_n} ] = $h;
 	}
 
-	$tx->{h} = $tx_h;
+	$tx->{nVersion} = 1;
 
 	return $tx;
 }
@@ -304,33 +311,29 @@ sub blk_save {
 }
 
 sub blk_load {
-	my ($blk_h) = @_;
+	my ($blk) = @_;
 
-	$sth{blk_sel}->execute ($blk_h);
-	my $h = $sth{blk_sel}->fetchrow_hashref or return;
-	my $blk = $h;
-
-	$sth{blk_tx_sel}->execute ($blk_h);
-	while ($h = $sth{blk_tx_sel}->fetchrow_hashref) {
+	$sth{blk_tx_sel}->execute ($blk->{hash});
+	while (my $h = $sth{blk_tx_sel}->fetchrow_hashref) {
 		$blk->{vtx_h}[ $h->{blk_n} ] = $h->{tx_hash};
 	}
 
-	$blk->{h} = $blk_h;
-
-	return $blk;
+	$blk->{vtx}[$_] = tx_load ($blk->{vtx_h}[$_])
+		for 0..$#{ $blk->{vtx_h} };
 }
 
 sub blk_best {
 	$sth{blk_best}->execute ();
 	my $h = $sth{blk_best}->fetchrow_hashref;
-	return $h && blk_load ($h->{hash});
+	return $h && blk_exists ($h->{hash});
 }
 
 sub blk_connect {
 	my ($blk) = @_;
 
-	$sth{blk_connect}->execute (@$blk{qw( nHeight mainBranch h )});
+	$sth{blk_connect}->execute (@$blk{qw( nHeight mainBranch hash )});
 
+	# XXX update
 	if ($blk->{mainBranch}) {
 		$sth{tx_main}->execute ($blk->{nHeight}, $_)
 			for @{ $blk->{vtx_h} };
@@ -382,12 +385,20 @@ sub key_save {
 sub key_ammo {
 	my ($addr, $height) = @_;
 
-	my %res;
-	for (qw( ammo ammo_plus ammo_minus )) {
-		$sth{"key_$_"}->execute ($addr, $height);
-		my $h = $sth{"key_$_"}->fetchrow_hashref;
-		$res{$_} = $h ? $h->{ammo} : 0;
-	}
+	my (%res, $h);
+
+	$sth{key_ammo}->execute ($addr, $height, $height);
+	$h = $sth{key_ammo}->fetchrow_hashref;
+	$res{ammo} = $h ? $h->{ammo} : 0;
+
+	$sth{key_ammo_plus}->execute ($addr, $height);
+	$h = $sth{key_ammo_plus}->fetchrow_hashref;
+	$res{ammo_plus} = $h ? $h->{ammo} : 0;
+
+	$sth{key_ammo_minus}->execute ($addr, $height);
+	$h = $sth{key_ammo_minus}->fetchrow_hashref;
+	$res{ammo_minus} = $h ? $h->{ammo} : 0;
+
 	return \%res;
 }
 

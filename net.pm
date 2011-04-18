@@ -163,7 +163,7 @@ sub PushGetBlocks {
 
 	PushMessage ($file, 'getblocks', {
 		nVersion	=> $VERSION,
-		locator		=> [ $main::blk_best->{h} ],
+		locator		=> [ $main::blk_best->{hash} ],
 		hashStop	=> $main::NULL256,
 	});
 }
@@ -219,8 +219,9 @@ sub got_block {
 		or die "bad version $blk->{nVersion}";
 
 	if (!main::ProcessBlock ($blk)) {
-		# orphaned, continue download on first, or get missing blocks
-		$file->{bc_dl}++ ? PushGetData ($file) : PushGetBlocks ($file);
+		# orphaned, get missing blocks and continue download
+		PushGetData ($file);
+		PushGetBlocks ($file);
 	}
 }
 
