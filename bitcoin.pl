@@ -19,6 +19,8 @@ main::init ();
 web::server (8899);
 net::connect ('127.0.0.1', 8333);
 event::loop ();
-print "commiting data\n";
-data::commit ();
-print "goodbye\n";
+END {
+	print "commiting data\n";
+	data::commit ();
+	print "goodbye\n";
+}

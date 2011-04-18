@@ -35,7 +35,7 @@ our $GenesisMerkleRoot = reverse pack 'H*',
 our $GenesisHash = reverse pack 'H*',
 	'000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f';
 
-our $blk_best = 0;
+our $blk_best;
 
 sub AmmoFormat {
 	my ($ammo) = @_;
@@ -95,7 +95,7 @@ sub TransactionIncome {
 		my $nValue = $txFrom->{vout}[$nOut]{nValue};
 		my $scriptPubKey = $txFrom->{vout}[$nOut]{scriptPubKey};
 
-		D && warn "$util::b2h{$tx->{h}} $_ <- " .
+		D && warn "$util::b2h{$tx->{hash}} $_ <- " .
 		    "$util::b2h{$txFrom_h} $nOut =$nValue $last";
 
 		EvalScriptCheck ($tx->{vin}[$_]{scriptSig}, $scriptPubKey,
@@ -113,7 +113,7 @@ sub TransactionOutcome {
 	for (0 .. $#{ $tx->{vout} }) {
 		my $v = $tx->{vout}[$_]{nValue};
 		die "txout.nValue negative" if $v >= 2**62;
-		D && warn "$util::b2h{$tx->{h}} $_ -> +$v";
+		D && warn "$util::b2h{$tx->{hash}} $_ -> +$v";
 		$sum += $v;
 	}
 	return $sum;
@@ -125,7 +125,7 @@ sub CheckTransaction {
 	die "vin or vout empty"
 		if !@{ $tx->{vin} } || !@{ $tx->{vout} };
 
-	D && warn "$util::b2h{$tx->{h}}";
+	D && warn "$util::b2h{$tx->{hash}}";
 
 	my ($out, $in, $fee);
 	if (IsCoinBase ($tx)) {
@@ -136,16 +136,16 @@ sub CheckTransaction {
 		$in = 0;
 		$out = TransactionOutcome ($tx);
 		$fee = GetBlockValue (0);
-		D && warn "$util::b2h{$tx->{h}} coin out=$out fee=$fee";
+		D && warn "$util::b2h{$tx->{hash}} coin out=$out fee=$fee";
 	} else {
 		$in = TransactionIncome ($tx, $last_tx, $spent);
 		$out = TransactionOutcome ($tx);
 		$fee = GetMinFee ($tx);
-		D && warn "$util::b2h{$tx->{h}} in=$in fee=$fee out=$out";
-		warn "XXX fix getminfree $util::b2h{$tx->{h}} $out > $in - $fee"
+		D && warn "$util::b2h{$tx->{hash}} in=$in fee=$fee out=$out";
+		warn "XXX fix getminfree $util::b2h{$tx->{hash}} $out > $in - $fee"
 			if $out > $in - $fee;
 	}
-	$last_tx->{$tx->{h}} = $tx;
+	$last_tx->{$tx->{hash}} = $tx;
 	return $out - $in - $fee;
 }
 
@@ -164,10 +164,10 @@ sub TransactionFixOutAddr {
 sub AddTransaction {
 	my ($tx) = @_;
 
-	D && warn "add tx $util::b2h{$tx->{h}}";
-	if (!data::tx_exists ($tx->{h})) {
+	D && warn "add tx $util::b2h{$tx->{hash}}";
+	if (!data::tx_exists ($tx->{hash})) {
 		TransactionFixOutAddr ($tx);
-		data::tx_save ($tx->{h}, $tx);
+		data::tx_save ($tx->{hash}, $tx);
 	}
 }
 
@@ -183,16 +183,16 @@ sub ProcessTransaction {
 	die "coinbase as individual tx"
 		if IsCoinBase ($tx);
 
-	$tx->{h} = TransactionHash ($tx);
+	$tx->{hash} = TransactionHash ($tx);
 
-	if (data::tx_exists ($tx->{h})) {
-		warn "tx $util::b2h{$tx->{h}} already processed";
+	if (data::tx_exists ($tx->{hash})) {
+		warn "tx $util::b2h{$tx->{hash}} already processed";
 		return;
 	}
 
 	AddTransaction ($tx);
-	data::blk_tx_add ($NULL256, -1, $tx->{h});
-	warn "new tx $util::b2h{$tx->{h}}";
+	data::blk_tx_add ($NULL256, -1, $tx->{hash});
+	warn "new tx $util::b2h{$tx->{hash}}";
 }
 
 sub GetMinFee {
@@ -266,7 +266,7 @@ sub GetDepthInMainChain_ {
 	my ($tx) = @_;
 
 	my $blk_h = $tx->{blk_h} or die "no block hash";
-	my $blk = data::blk_load ($blk_h) or die "no block";
+	my $blk = data::blk_exists ($blk_h) or die "no block";
 	return $blk_best->{nHeight} - $blk->{nHeight} + 1;
 }
 
@@ -309,7 +309,7 @@ sub GetNextWorkRequired_ {
 	my $first = $block;
 	for (1 .. $nInterval - 1) {
 		die if !exists $first->{hashPrevBlock};
-		$first = data::blk_load ($first->{hashPrevBlock}) or die;
+		$first = data::blk_exists ($first->{hashPrevBlock}) or die;
 	}
 
 	my $nActualTimespan = $block->{nTime} - $first->{nTime};
@@ -359,7 +359,7 @@ sub BuildMerkleTree {
 sub CheckBlock {
 	my ($blk) = @_;
 
-	D && warn "$util::b2h{$blk->{h}}";
+	D && warn "$util::b2h{$blk->{hash}}";
 
 	my $vtx = $blk->{vtx};
 
@@ -378,9 +378,9 @@ sub CheckBlock {
 	die "nBits below minimum work"
 		if $compact gt $bnProofOfWorkLimit;
 	die "hash doesn't match nBits"
-		if reverse ($blk->{h}) gt $compact;
+		if reverse ($blk->{hash}) gt $compact;
 
-	$blk->{vtx_h} = [ map $_->{h} = TransactionHash ($_), @$vtx ];
+	$blk->{vtx_h} = [ map $_->{hash} = TransactionHash ($_), @$vtx ];
 
 	die "hashMerkleRoot mismatch"
 		if $blk->{hashMerkleRoot} ne BuildMerkleTree (@{ $blk->{vtx_h} });
@@ -395,8 +395,8 @@ sub SpentBlock {
 
 	$sum += CheckTransaction ($_, $last_tx, $spent) for @{ $blk->{vtx} };
 
-	D && warn "$util::b2h{$blk->{h}} sum $sum";
-	$sum <= 0 or die "$util::b2h{$blk->{h}} sum $sum is positive";
+	D && warn "$util::b2h{$blk->{hash}} sum $sum";
+	$sum <= 0 or die "$util::b2h{$blk->{hash}} sum $sum is positive";
 
 	for my $tx_h (keys %$spent) {
 	for my $n (keys %{ $spent->{$tx_h} }) {
@@ -408,26 +408,26 @@ sub SpentBlock {
 sub SwitchBranch {
 	my ($blk) = @_;
 
-	D && warn "$util::b2h{$blk->{h}}";
+	D && warn "$util::b2h{$blk->{hash}}";
 
 	my @new;
 	my $fork = $blk;
 	while (!$fork->{mainBranch}) {
 		unshift @new, $fork;
-		$fork = data::blk_load ($fork->{hashPrevBlock}) or die;
+		$fork = data::blk_exists ($fork->{hashPrevBlock}) or die;
 	}
 
 	my @old;
 	my $b = $blk_best;
-	while ($b->{h} ne $fork->{h}) {
+	while ($b->{hash} ne $fork->{hash}) {
 		$b->{mainBranch} or die "best not main";
 		unshift @old, $b;
-		$b = data::blk_load ($b->{hashPrevBlock}) or die;
+		$b = data::blk_exists ($b->{hashPrevBlock}) or die;
 	}
 
-	D && warn "fork $util::b2h{$fork->{h}}" .
-		" old (@util::b2h{map $_->{h}, @old})" .
-		" new (@util::b2h{map $_->{h}, @new})";
+	D && warn "fork $util::b2h{$fork->{hash}}" .
+		" old (@util::b2h{map $_->{hash}, @old})" .
+		" new (@util::b2h{map $_->{hash}, @new})";
 
 	data::tx_trimmain ($fork->{nHeight} + 1) if @old;
 	for (@old) {
@@ -435,6 +435,7 @@ sub SwitchBranch {
 		data::blk_connect ($_);
 	}
 	for (@new) {
+		data::blk_load ($_);
 		SpentBlock ($_);
 		$_->{mainBranch} = 1;
 		data::blk_connect ($_);
@@ -444,13 +445,13 @@ sub SwitchBranch {
 sub ReconnectBlock {
 	my ($blk) = @_;
 
-	D && warn "$util::b2h{$blk->{h}}";
+	D && warn "$util::b2h{$blk->{hash}}";
 
-	if ($blk->{h} eq $GenesisHash) {
+	if ($blk->{hash} eq $GenesisHash) {
 		$blk->{nHeight} = 0;
 		$blk->{mainBranch} = 1;
 	} else {
-		my $prev = data::blk_load ($blk->{hashPrevBlock});
+		my $prev = data::blk_exists ($blk->{hashPrevBlock});
 		$blk->{nHeight} = $prev && $prev->{nHeight} >= 0 ?
 		    $prev->{nHeight} + 1 : -1;
 		$blk->{mainBranch} = 0;
@@ -466,11 +467,11 @@ sub ReconnectBlock {
 		if !$blk_best || $blk->{nHeight} > $blk_best->{nHeight};
 
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
-		"block $util::b2h{$blk->{h}}";
+		"block $util::b2h{$blk->{hash}}";
 
 	if ($blk->{nHeight} != -1) {
-		ReconnectBlock (data::blk_load ($_))
-			for data::blk_orphan ($blk->{h});
+		ReconnectBlock (data::blk_exists ($_))
+			for data::blk_orphan ($blk->{hash});
 	}
 }
 
@@ -483,11 +484,11 @@ sub BlockHash {
 sub ProcessBlock {
 	my ($blk) = @_;
 
-	$blk->{h} = BlockHash ($blk);
-	D && warn "$util::b2h{$blk->{h}}";
+	$blk->{hash} = BlockHash ($blk);
+	D && warn "$util::b2h{$blk->{hash}}";
 
-	if (data::blk_exists ($blk->{h})) {
-		warn "block $util::b2h{$blk->{h}} already processed";
+	if (data::blk_exists ($blk->{hash})) {
+		warn "block $util::b2h{$blk->{hash}} already processed";
 		return 1;
 	}
 
@@ -498,9 +499,10 @@ sub ProcessBlock {
 
 	$blk->{nHeight} = -1;
 	$blk->{mainBranch} = 0;
-	data::blk_save ($blk->{h}, $blk);
+	data::blk_save ($blk->{hash}, $blk);
 
 	ReconnectBlock ($blk);
+
 	return $blk->{nHeight} != -1;
 }
 
@@ -547,7 +549,7 @@ sub GenesisBlock {
 sub init () {
 	ProcessBlock (GenesisBlock ());
 	$blk_best = data::blk_best () or die "no best";
-	warn "best $blk_best->{nHeight} $util::b2h{$blk_best->{h}}";
+	warn "best $blk_best->{nHeight} $util::b2h{$blk_best->{hash}}";
 }
 
 #
