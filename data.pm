@@ -389,15 +389,15 @@ sub key_ammo {
 
 	$sth{key_ammo}->execute ($addr, $height, $height);
 	$h = $sth{key_ammo}->fetchrow_hashref;
-	$res{ammo} = $h ? $h->{ammo} : 0;
+	$res{ammo} = $h ? $h->{ammo} || 0 : 0;
 
 	$sth{key_ammo_plus}->execute ($addr, $height);
 	$h = $sth{key_ammo_plus}->fetchrow_hashref;
-	$res{ammo_plus} = $h ? $h->{ammo} : 0;
+	$res{ammo_plus} = $h ? $h->{ammo} || 0 : 0;
 
 	$sth{key_ammo_minus}->execute ($addr, $height);
 	$h = $sth{key_ammo_minus}->fetchrow_hashref;
-	$res{ammo_minus} = $h ? $h->{ammo} : 0;
+	$res{ammo_minus} = $h ? $h->{ammo} || 0 : 0;
 
 	return \%res;
 }
