@@ -233,7 +233,7 @@ sub sig_decode {
 	my ($h, $b, $t) = unpack 'C w/a a*', $bin
 		or die "bad sig";
 	$h == 0x30			or die "bad sig head $h";
-	length ($t) == 0		or die "garbage after sig";
+	length ($t) == 0		or warn "garbage after sig";
 	my ($h1, $br, $h2, $bs, $t2) = unpack 'C w/a C w/a a*', $b
 		or die "bad sig";
 	$h1 == 0x02 && $h2 == 0x02	or die "bad sig heads $h1 or $h2";
