@@ -2,6 +2,7 @@ package serialize;
 
 use warnings;
 use strict;
+use Math::BigInt;
 
 sub D() { 0 }
 
@@ -85,8 +86,7 @@ sub SerializeNet16 { my ($i) = @_; pack 'n', $i }
 sub SerializeInt64 {
 	my ($i) = @_;
 
-	$i < 1e15
-		or die "potential problem with 32-bit perl";
+	$i = Math::BigInt->new ($i) if $i > 1e15;
 	pack 'VV', $i % 2**32, $i / 2**32
 }
 
@@ -127,8 +127,7 @@ sub UnserializeIP { join '.', unpack 'C4', Uns ($_[0], "a4") }
 sub UnserializeInt64 {
 	my $a = Uns ($_[0], 'V');
 	my $b = Uns ($_[0], 'V');
-	$b <= 232830
-		or die "potential problem with 32-bit perl";
+	$b = Math::BigInt->new ($b) if $b > 232830;
 	return $b * 2**32 + $a . '';
 }
 

@@ -169,7 +169,7 @@ $func
 <table border="1"><tr>
 <td><b>Address</b></td>
 <td><b>Amount</b></td>
-<td><b>Unconfirmed</b></td>
+<td><b>Unconfirmed($main::CONFIRMATIONS)</b></td>
 <td><b>Remark</b></td>
 </tr>
 $keys

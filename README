@@ -21,7 +21,6 @@ Todo:
 - money transfer
 - full networking and multiple connections
 - getwork rpc for miners
-- fix serialize.pm for "32-bit perl"
 
 License
 =======

@@ -5,7 +5,7 @@ package ecdsa;
 
 use warnings;
 use strict;
-use Math::BigInt try => 'GMP,Pari';
+use Math::BigInt;
 
 our $PROB_VERIFY = .001;	# speed hack
 

@@ -2,6 +2,7 @@
 
 use warnings;
 use strict;
+use Math::BigInt try => 'GMP,Pari';
 
 use logger;
 use data;
