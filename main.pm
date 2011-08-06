@@ -624,9 +624,12 @@ sub Solver {
 sub EvalScriptCheck {
 	my ($scriptSig, $scriptPubKey, $txTo, $nIn) = @_;
 
-	my ($op, $sig) = script::GetOp ($scriptSig) or return;
-	$op eq 'OP_PUSHDATA' or return;
-	$sig =~ s/(\C)\z// or return;
+	my ($op, $sig) = script::GetOp ($scriptSig)
+		or warn ("no getop"), return;
+	$op =~ /^OP_PUSHDATA/
+		or warn ("$op not OP_PUSHDATA*"), return;
+	$sig =~ s/(\C)\z//
+		or warn ("short sig"), return;
 	my $nHashType = ord $1;
 
 	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType);
@@ -634,12 +637,16 @@ sub EvalScriptCheck {
 	my $pub = script::GetPubKey ($scriptPubKey);
 	if (!$pub) {
 		my $pub_h = script::GetBitcoinAddressHash160 ($scriptPubKey)
-			or return;
-		($op, $pub) = script::GetOp ($scriptSig) or return;
-		$op eq 'OP_PUSHDATA' or return;
-		base58::Hash160 ($pub) eq $pub_h or return;
+			or warn ("no addr"), return;
+		($op, $pub) = script::GetOp ($scriptSig)
+			or warn ("no script"), return;
+		$op eq 'OP_PUSHDATA'
+			or warn ("second $op not OP_PUSHDATA"), return;
+		base58::Hash160 ($pub) eq $pub_h
+			or warn ("bad hash"), return;
 	}
-	$scriptSig eq '' or return;
+	$scriptSig eq ''
+		or warn ("garbage"), return;
 	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
 }
 
