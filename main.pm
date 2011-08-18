@@ -154,7 +154,7 @@ sub TransactionFixOutAddr {
 
 	for (0 .. $#{ $tx->{vout} }) {
 		my $pub = $tx->{vout}[$_]{scriptPubKey};
-		my $pub_h = GetKeyHash ($pub) or die "no pub key";
+		my $pub_h = GetKeyHash ($pub) or die 'no pub key';
 		my $addr = base58::Hash160ToAddress ($pub_h);
 		$tx->{vout}[$_]{addr} = $addr;
 		$tx->{vout}[$_]{spentHeight} = -1;

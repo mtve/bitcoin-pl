@@ -241,7 +241,7 @@ sub GetPubKey {
 	my ($script) = @_;
 
 	my ($op, $pub) = GetOp ($script);
-	$op eq 'OP_PUSHDATA' 					or return;
+	$op =~ /^OP_PUSHDATA/ 					or return;
 	GetOp ($script) eq 'OP_CHECKSIG'			or return;
 	$script eq ''						or return;
 	return $pub;
