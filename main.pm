@@ -591,7 +591,7 @@ sub SignatureHash {
 
 	# block 154012 last tx
 	$nHashType == $script::SIGHASH{ALL}
-		or warn "nHashType $nHashType is not supported";
+		or warn ("nHashType $nHashType is not supported"), return;
 
 	$nIn < @{ $txTo->{vin} }
 		or die "assert";
@@ -636,7 +636,8 @@ sub EvalScriptCheck {
 		or warn ("short sig"), return;
 	my $nHashType = ord $1;
 
-	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType);
+	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType)
+		or return 'wtf';
 
 	my $pub = script::GetPubKey ($scriptPubKey);
 	if (!$pub) {
