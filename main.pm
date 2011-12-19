@@ -154,7 +154,8 @@ sub TransactionFixOutAddr {
 
 	for (0 .. $#{ $tx->{vout} }) {
 		my $pub = $tx->{vout}[$_]{scriptPubKey};
-		my $pub_h = eval { GetKeyHash ($pub) } || 0; # fuck you, block 157606
+		# block 157606 first tx
+		my $pub_h = eval { GetKeyHash ($pub) } || 0;
 		my $addr = base58::Hash160ToAddress ($pub_h);
 		$tx->{vout}[$_]{addr} = $addr;
 		$tx->{vout}[$_]{spentHeight} = -1;
@@ -585,9 +586,12 @@ sub SelectCoins_ {
 sub SignatureHash {
 	my ($scriptCode, $txTo, $nIn, $nHashType) = @_;
 
+	# hello, block 110300 last tx
+	$nHashType ||= 0;
+
+	# block 154012 last tx
 	$nHashType == $script::SIGHASH{ALL}
-		or die "nHashType $nHashType is not supported"
-			if $nHashType;	# hello, block 110300 last tx
+		or warn "nHashType $nHashType is not supported";
 
 	$nIn < @{ $txTo->{vin} }
 		or die "assert";
