@@ -36,6 +36,17 @@ sub e_mul { my ($a, $b) = @_; $a * $b % $EC_P }
 sub e_div { my ($a, $b) = @_; $a * e_inv ($b) % $EC_P }
 sub e_neg { my ($a) = @_; -$a % $EC_P }
 sub e_pow2  { my ($a) = @_; e_mul ($a, $a) }
+sub e_pow { my ($a, $b) = @_; $a->bmodpow ($b, $EC_P) }
+
+sub e_x_ab {
+	my ($x) = @_;
+
+	e_add (e_mul (e_add (e_pow2 ($x), $EC_A), $x), $EC_B);
+}
+
+# because $EC_P % 4 == 3
+sub e_sqrt { my ($a) = @_; e_pow ($a, ($EC_P + 1) / 4) }
+sub e_solve { my ($x) = @_; e_sqrt (e_x_ab ($x)) }
 
 # point is two elements
 
@@ -106,8 +117,7 @@ sub p_oncurve {
 
 	my ($x, $y) = @$p;
 
-	return e_sub (e_add (e_mul (e_add (e_pow2 ($x), $EC_A), $x), $EC_B),
-	    e_pow2 ($y)) == 0;
+	return e_sub (e_x_ab ($x), e_pow2 ($y)) == 0;
 }
 
 sub p_mul_sum {					# p * k + q * l
@@ -201,11 +211,22 @@ sub pub_encode {
 sub pub_decode {
 	my ($bin) = @_;
 
-	length ($bin) == $EC_SIZE / 8 * 2 + 1	or die "bad pub size " . length $bin;
-	$bin =~ s/^\x4//			or die "bad pub start";
+	my ($x, $y);
+	my $t = ord $bin;
+	my $l = length $bin;
+	if ($t == 4) {
+		$l == $EC_SIZE / 8 * 2 + 1	or die "bad pub size $l";
+		$x = i_decode (substr $bin, 1, $EC_SIZE / 8);
+		$y = i_decode (substr $bin, $EC_SIZE / 8 + 1);
+	} elsif ($t == 2) {
+		$l == $EC_SIZE / 8 + 1		or die "bad pub size $l";
+		$x = i_decode (substr $bin, 1, $EC_SIZE / 8);
+		$y = e_solve ($x);
+	} else {
+		die "bad pub start $t";
+	}
+	p_oncurve ([$x, $y]) or die 'not on curve';
 
-	my $x = i_decode (substr $bin, 0, $EC_SIZE / 8);
-	my $y = i_decode (substr $bin, $EC_SIZE / 8);
 	return [ $x, $y ];
 }
 
