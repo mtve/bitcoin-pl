@@ -13,7 +13,10 @@ print ecdsa::version;
 ecdsa::pub_decode (pack 'H*', $_) or die for qw(
 	045075902f0a1dcf519a26e331db1ba3ea0b5dcec1e3e0ed8ad2aeace22057c4f5b1a05468c3047838bb987cb4653ddd434fd111e0352e6c1a9f635290c8323276
 	0271f1e54016d623897fa9b973c2f084376ff61651ee5b71eef0d98a8be56a75cc
+	037af54de87deb61e8885a97cff8d41aa6d188139c3ee3b3ec7e740a874bc2ac7f
 );
+
+print "ok 0";
 
 ecdsa::p_oncurve ([
 	ecdsa::i '0x11db93e1dcdb8a016b49840f8c53bc1eb68a382e97b1482ecad7b148a6909a5c',

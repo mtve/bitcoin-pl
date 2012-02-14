@@ -218,10 +218,11 @@ sub pub_decode {
 		$l == $EC_SIZE / 8 * 2 + 1	or die "bad pub size $l";
 		$x = i_decode (substr $bin, 1, $EC_SIZE / 8);
 		$y = i_decode (substr $bin, $EC_SIZE / 8 + 1);
-	} elsif ($t == 2) {
+	} elsif ($t == 2 || $t == 3) {
 		$l == $EC_SIZE / 8 + 1		or die "bad pub size $l";
 		$x = i_decode (substr $bin, 1, $EC_SIZE / 8);
 		$y = e_solve ($x);
+		$y = e_neg ($y) if $t % 2 != $y % 2;
 	} else {
 		die "bad pub start $t";
 	}
