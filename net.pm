@@ -174,7 +174,6 @@ sub got_verack {
 	D && warn "debug";
 
 	PushMessage ($file, 'verack');
-	$file->{has_crc} = 1;
 
 	D && warn "start downloading";
 	PushGetBlocks ($file);
@@ -241,6 +240,14 @@ sub got_getblocks {
 	D && warn "debug";
 }
 
+sub got_alert {
+	my ($file, $alert) = @_;
+
+	my $a = serialize::Unserialize ('alertPayload', $alert->{payload});
+	print "alert $a->{StatusBar}\n";
+	# 04fc9702847840aaf195de8442ebecedf5b095cdbb9bc716bda9110971b28a49e0ead8564ff0db22209e0374782c093bb899692d524e9d6a6956e7c5ecbcd68284
+}
+
 sub connect {
 	my ($addr, $port) = @_;
 
@@ -264,6 +271,7 @@ sub connect {
 			event::timer_del ($file->{timer_inact});
 			die "closed by $file->{closereason}";
 		},
+		has_crc		=> 1,		# http://bitcoin.org/feb20
 	);
 	$file->{timer_ping} = event::timer_new (
 		period	=> 30 * 60,

@@ -77,6 +77,25 @@ my %struct = (
 	getdata		=> \'CInv',
 	block		=> 'CBlock',
 	tx		=> 'CTransaction',
+	alert		=> [
+		payload			=> 'Str',
+		signature		=> 'Str',
+	],
+	alertPayload	=> [
+		Version			=> 'Int32',
+		RelayUntil		=> 'Int64',
+		Expiration		=> 'Int64',
+		ID			=> 'Int32',
+		Cancel			=> 'Int32',
+		setCancel		=> \'Int32',
+		MinVer			=> 'Int32',
+		MaxVer			=> 'Int32',
+		setSubVer		=> \'Str',
+		Priority		=> 'Int32',
+		Comment			=> 'Str',
+		StatusBar		=> 'Str',
+		Reserved		=> 'Str',
+	],
 );
 
 sub SerializeInt32 { my ($i) = @_; pack 'V', $i }
