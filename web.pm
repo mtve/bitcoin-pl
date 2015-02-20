@@ -13,8 +13,6 @@ use base58;
 use ecdsa;
 use util;
 
-our $VERSION = '110406';
-
 our $SQL_PAGE = 20;
 
 our $sid = base58::EncodeBase58 (

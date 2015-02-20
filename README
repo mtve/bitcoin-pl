@@ -1,7 +1,10 @@
 Status
 ======
 Currently broken due to tx 
+
 eb3b82c0884e3efa6d8b0be55b4915eb20be124c9766245bcc7f34fdac32bccb
+
+https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki
 
 About
 =====
@@ -67,3 +70,13 @@ SQL
 delete broken block to reload and reapply it again:
 
 delete from blk where hash=(select hash from blk where nheight=-1 order by ntime asc)
+
+TODO
+====
+- wire protocol version 70002
+- block.nVersion=2 rule that the coinbase starts with serialized block height
+- DERSIG (BIP66) rules, for block.nVersion=3
+- new bips
+- web password
+- web acl
+- api

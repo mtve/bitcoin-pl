@@ -63,10 +63,20 @@ my %struct = (
 		nLocalHostNonce		=> 8,
 		strSubVer		=> 'Str',
 		nStartingHeight		=> 'Int32',
+		relay			=> 1,
 	],
-	addr		=> \'CAddress',
+	CAddress2	=> [
+		time			=> 'Int32',
+		addr			=> 'CAddress',
+	],
+	addr		=> \'CAddress2',
 	getaddr		=> '',
-	ping		=> '',
+	ping		=> [
+		nonce			=> 8,
+	],
+	pong		=> [
+		nonce			=> 8,
+	],
 	verack		=> '',
 	getblocks	=> [
 		nVersion		=> 'Int32',

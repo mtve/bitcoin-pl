@@ -13,7 +13,7 @@ use util;
 sub D() { 1 }
 
 our $WIRE_MAGIC = "\xf9\xbe\xb4\xd9";
-our $VERSION = 300;
+our $VERSION = 70002;
 our $pszSubVer = ".0";
 our $DEFAULT_PORT = 8333;
 our $PUBLISH_HOPS = 5;
@@ -21,6 +21,8 @@ our $NODE_NETWORK = 1 << 0;
 our $pchIPv4 = "\0" x 10 . "\xff" x 2;
 our $MSG_TX = 1;
 our $MSG_BLOCK = 2;
+
+sub rand8 { join '', map chr rand 256, 1..8 }
 
 sub PushMessage {
 	my ($file, $cmd, $data) = @_;
@@ -114,7 +116,7 @@ sub send_version {
 
 	D && warn "debug";
 
-	$file->{nLocalHostNonce} = join '', map chr rand 256, 1..8;
+	$file->{nLocalHostNonce} = rand8 ();
 
 	PushMessage ($file, 'version', {
 		nVersion	=> $VERSION,
@@ -125,6 +127,7 @@ sub send_version {
 		nLocalHostNonce	=> $file->{nLocalHostNonce},
 		strSubVer	=> '',
 		nStartingHeight	=> -1,
+		relay		=> "\1",	# bip-0037
 	});
 }
 
@@ -138,6 +141,12 @@ sub got_version {
 		if $ver->{nLocalHostNonce} eq $file->{nLocalHostNonce};
 
 	# PushMessage ($file, 'getaddr');
+}
+
+sub send_ping {
+	my ($file) = @_;
+
+	PushMessage ($file, 'ping', { nonce => rand8 () });
 }
 
 sub got_ping {
@@ -183,7 +192,7 @@ sub got_addr {
 	my ($file, $addr) = @_;
 
 	D && warn "debug";
-	my $v4 = grep $_->{pchReserved} eq $pchIPv4, @$addr;
+	my $v4 = grep $_->{addr}{pchReserved} eq $pchIPv4, @$addr;
 	warn "$v4 ipv4 addresses of " . @$addr . " total\n";
 }
 
@@ -214,7 +223,7 @@ sub got_block {
 	my ($file, $blk) = @_;
 
 	D && warn "debug";
-	$blk->{nVersion} == 1
+	$blk->{nVersion} >= 1 && $blk->{nVersion} <= 3
 		or die "bad version $blk->{nVersion}";
 
 	if (!main::ProcessBlock ($blk)) {
@@ -255,9 +264,9 @@ sub connect {
 	my $sock = IO::Socket::INET->new (
 		PeerAddr	=> $addr,
 		PeerPort	=> $port,
-		Blocking	=> 0,
 	) or die "connect to $addr:$port failed";
 	binmode $sock;
+	defined $sock->blocking (0) or die 'blocking';
 	warn "connected to $addr:$port";
 	print "connected to node $addr:$port\n";
 
@@ -275,7 +284,7 @@ sub connect {
 	);
 	$file->{timer_ping} = event::timer_new (
 		period	=> 30 * 60,
-		cb	=> sub { PushMessage ($file, 'ping') },
+		cb	=> \&send_ping,
 	);
 	$file->{timer_inact} = event::timer_new (
 		period	=> 90 * 60,
