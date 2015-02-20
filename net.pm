@@ -150,9 +150,10 @@ sub send_ping {
 }
 
 sub got_ping {
-	my ($file) = @_;
+	my ($file, $data) = @_;
 
 	D && warn "debug";
+	PushMessage ($file, 'pong', $data);
 }
 
 sub PushGetData {
