@@ -231,8 +231,12 @@ sub GetBitcoinAddressHash160 {
 	$op eq 'OP_PUSHDATA' && length ($hash) == 160 / 8	or return;
 	GetOp ($script) eq 'OP_EQUALVERIFY'			or return;
 	GetOp ($script) eq 'OP_CHECKSIG'			or return;
-	$script =~ s/^\xac+\z//;		# yo block 71036
-	$script =~ s/^\x61+\z//;		# yo block 127630
+
+	# fix for blocks 71036 and 127630
+	my $nop = chr $OP{OP_NOP};
+	my $cs  = chr $OP{OP_CHECKSIG};
+	$script =~ s/^($nop|$cs)+\z//;
+
 	$script eq ''						or return;
 	return $hash;
 }

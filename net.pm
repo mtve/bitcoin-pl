@@ -127,7 +127,7 @@ sub send_version {
 		nLocalHostNonce	=> $file->{nLocalHostNonce},
 		strSubVer	=> '',
 		nStartingHeight	=> -1,
-		relay		=> "\1",	# bip-0037
+		relay		=> "\1",	# bip-0037, send me all
 	});
 }
 
@@ -136,7 +136,7 @@ sub got_version {
 
 	D && warn "debug";
 	die "version $ver->{nVersion} is too low"
-		if $ver->{nVersion} < 200;
+		if $ver->{nVersion} < $VERSION;
 	die "equal nonce"
 		if $ver->{nLocalHostNonce} eq $file->{nLocalHostNonce};
 
