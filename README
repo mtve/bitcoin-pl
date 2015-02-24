@@ -34,13 +34,13 @@ TODO
 ====
 + wire protocol version 70002
 - bip11 multisig
+- getheaders
 - bip34 block.nVersion=2 coinbase starts with serialized block height
 - bip66 dersig rules, for block.nVersion=3
 - other bips
 - web password
 - web acl
-- api
 - web blockexplorer like browse
 - money transfer
 - full networking and multiple connections
-- rpc for miners and wallets
+- rpc api for miners and wallets

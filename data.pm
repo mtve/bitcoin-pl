@@ -5,12 +5,7 @@ use strict;
 use DBI;
 
 use event;
-
-my $DBI_DS = 'dbi:SQLite:dbname=var/db';
-my $DBI_USER = '';
-my $DBI_PASS = '';
-
-my $COMMIT_PERIOD = 10 * 60;
+use cfg;
 
 my $SCRIPT = <<SQL;
 
@@ -183,7 +178,8 @@ sub commit {
 }
 
 sub init {
-	$dbh = DBI->connect ($DBI_DS, $DBI_USER, $DBI_PASS, {
+	my ($dbi, $user, $pass) = @cfg::var{qw( DB_DS DB_USER DB_PASS )};
+	$dbh = DBI->connect ($dbi, $user, $pass, {
 		RaiseError	=> 1,
 		AutoCommit	=> 0,
 	});
@@ -235,7 +231,7 @@ SQL
 	$sth{$_} = $dbh->prepare ($STH{$_}) for keys %STH;
 
 	event::timer_new (
-		period	=> $COMMIT_PERIOD,
+		period	=> $cfg::var{DB_COMMIT_PERIOD},
 		cb	=> \&commit,
 	);
 }

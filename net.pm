@@ -9,6 +9,7 @@ use serialize;
 use main;
 use base58;
 use util;
+use cfg;
 
 sub D() { 1 }
 
@@ -21,6 +22,8 @@ our $NODE_NETWORK = 1 << 0;
 our $pchIPv4 = "\0" x 10 . "\xff" x 2;
 our $MSG_TX = 1;
 our $MSG_BLOCK = 2;
+
+our $peer;
 
 sub rand8 { join '', map chr rand 256, 1..8 }
 
@@ -264,14 +267,14 @@ sub got_alert {
 	# 04fc9702847840aaf195de8442ebecedf5b095cdbb9bc716bda9110971b28a49e0ead8564ff0db22209e0374782c093bb899692d524e9d6a6956e7c5ecbcd68284
 }
 
-sub connect {
+sub start {
 	my ($addr, $port) = @_;
 
 	D && warn "connecting to $addr:$port";
 	my $sock = IO::Socket::INET->new (
 		PeerAddr	=> $addr,
 		PeerPort	=> $port,
-	) or die "connect to $addr:$port failed";
+	) or die "connect failed: $!";
 	binmode $sock;
 	defined $sock->blocking (0) or die 'blocking';
 	warn "connected to $addr:$port";
@@ -283,9 +286,11 @@ sub connect {
 		std_read_cb	=> \&read_cb,
 		net_state	=> \&state_hdr,
 		close_cb	=> sub {
+			local *__ANON__ = 'close_cb';
 			event::timer_del ($file->{timer_ping});
 			event::timer_del ($file->{timer_inact});
-			die "closed by $file->{closereason}";
+			warn "closed by $file->{closereason}";
+			undef $peer;
 		},
 		has_crc		=> 1,		# http://bitcoin.org/feb20
 	);
@@ -295,10 +300,32 @@ sub connect {
 	);
 	$file->{timer_inact} = event::timer_new (
 		period	=> 90 * 60,
-		cb	=> sub { event::file_close ($file, 'inactivity') },
+		cb	=> sub {
+			local *__ANON__ = 'timer_inact.cb';
+			event::file_close ($file, 'inactivity');
+		},
 	);
 
 	send_version ($file);
+	$peer = $file;
+}
+
+sub init {
+	event::timer_new (
+		period	=> $cfg::var{NET_PERIOD},
+		now	=> 1,
+		cb	=> sub {
+			local *__ANON__ = 'periodic';
+			return if $peer;
+			for (split ',', $cfg::var{NET_PEERS}) {
+				my ($ip, $port) = /^(.*):(\d+)\z/
+					or die "bad peer $_";
+				eval { start ($ip, $port); };
+				last if !$@;
+				warn "error $_ $@";
+			}
+		}
+	);
 }
 
 1;

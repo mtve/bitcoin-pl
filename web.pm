@@ -12,8 +12,7 @@ use logger;
 use base58;
 use ecdsa;
 use util;
-
-our $SQL_PAGE = 20;
+use cfg;
 
 our $sid = base58::EncodeBase58 (
     substr (base58::sha256 ("$$ @{[ (stat $0)[1,4,5,7,9] ]}"), 0, 8));
@@ -38,7 +37,7 @@ sub page_sql {
 	my $html = '';
 	my $sql = $file->{http_param}{sql} || '';
 	if ($sql) {
-		my $res = eval { data::sql ($sql, $SQL_PAGE) };
+		my $res = eval { data::sql ($sql, $cfg::var{WEB_PAGE_SIZE}) };
 		if ($@) {
 			$html = <<HTML;
 <p><font color="#FF0000">Error: $util::hesc{$@}</font></p>
@@ -278,9 +277,8 @@ sub http_incoming {
 	event::file_close ($file);
 }
 
-sub server {
-	my ($port) = @_;
-
+sub init {
+	my $port = $cfg::var{WEB_PORT};
 	my $sock = new IO::Socket::INET (
 		Listen		=> 1,
 		LocalPort	=> $port,

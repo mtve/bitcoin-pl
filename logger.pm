@@ -3,13 +3,14 @@ package logger;
 use warnings;
 use strict;
 
-our $file = 'var/log';
-our $MAX_FILES = 9;
+use cfg;
+
 our $fh;
 
 sub rotate {
+	my $file = $cfg::var{LOG_FILE_NAME};
 	rename "$file.$_", "$file." . ($_ + 1)
-		for reverse 1..$MAX_FILES-1;
+		for reverse 1 .. $cfg::var{LOG_FILES} - 1;
 	close $fh if $fh;
 	rename $file, "$file.1";
 	open $fh, '>', $file
