@@ -234,6 +234,12 @@ sub got_block {
 	}
 }
 
+sub got_notfound {
+	my ($file, $inv) = @_;
+
+	D && warn "debug";
+}
+
 sub got_tx {
 	my ($file, $tx) = @_;
 

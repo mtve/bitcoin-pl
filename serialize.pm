@@ -85,6 +85,7 @@ my %struct = (
 	],
 	inv		=> \'CInv',
 	getdata		=> \'CInv',
+	notfound	=> \'CInv',
 	block		=> 'CBlock',
 	tx		=> 'CTransaction',
 	alert		=> [
