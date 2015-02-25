@@ -1,10 +1,12 @@
 #! /usr/bin/perl -l
-BEGIN { chdir '..' }
 
 use warnings;
 use strict;
+use lib '../lib';
 
 use data;
+
+chdir '..' or die $!;
 
 data::init ();
 

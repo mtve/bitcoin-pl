@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 use Math::BigInt try => 'GMP,Pari';
+use lib 'lib';
 
 use logger;
 use data;
