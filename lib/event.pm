@@ -8,7 +8,6 @@ sub D() { 0 }
 our $timei = time;
 
 my @files;
-my $nfiles;
 my %timers;
 
 my $quit = 0;
@@ -16,6 +15,7 @@ my $ri = '';
 my $wi = '';
 my $ro = '';
 my $wo = '';
+my $WIN = $^O =~ /Win/;
 
 sub file_new {
 	my (%arg) = @_;
@@ -37,7 +37,6 @@ sub file_new {
 	};
 	$files[$fileno] = $file;
 	vec ($ri, $fileno, 1) = 1;
-	$nfiles++;
 
 	return $file;
 }
@@ -54,16 +53,18 @@ sub file_write_cb {
 	my ($file) = @_;
 
 	my $bytes = syswrite $file->{fh}, $file->{dataout};
-	die 'syswrite'
-		if !defined $bytes;
-	substr ($file->{dataout}, 0, $bytes) = '';
-	vec ($wi, $file->{fileno}, 1) = $file->{dataout} ne '';
+	if ($bytes) {
+		substr ($file->{dataout}, 0, $bytes) = '';
+		vec ($wi, $file->{fileno}, 1) = $file->{dataout} ne '';
+	} else {
+		file_close_now ($file, "syswrite $!(" . int ($!) . ')');
+	}
 }
 
 sub file_pktwrite {
 	my ($file, $data) = @_;
 
-	vec ($wi, $file->{fileno}, 1) = 1;
+	vec ($wi, $file->{fileno}, 1) = 1 if exists $file->{fileno};
 	push @{ $file->{datapktout} }, $data;
 	$file->{writebytes} += length $data;
 }
@@ -74,9 +75,9 @@ sub file_pktwrite_cb {
 	return if !@{ $file->{datapktout} };
 
 	my $bytes = syswrite $file->{fh}, $file->{datapktout}[0];
-	die 'syswrite'
-		if !defined $bytes;
-	if ($bytes == length $file->{datapktout}[0]) {
+	if (!$bytes) {
+		file_close_now ($file, "syswrite $!(" . int ($!) . ')');
+	} elsif ($bytes == length $file->{datapktout}[0]) {
 		shift @{ $file->{datapktout} };
 		vec ($wi, $file->{fileno}, 1) = @{ $file->{datapktout} } > 0;
 	} else {
@@ -100,8 +101,14 @@ sub file_read_cb {
 sub file_read {
 	my ($file, $bytes) = @_;
 
-	return length $file->{datain} < $bytes ? undef :
-		substr $file->{datain}, 0, $bytes, '';
+	if (defined $bytes) {
+		return length $file->{datain} < $bytes ? undef :
+			substr $file->{datain}, 0, $bytes, '';
+	} else {
+		my $res = $file->{datain};
+		$file->{datain} = '';
+		return $res;
+	}
 }
 
 sub server_new {
@@ -150,8 +157,10 @@ sub file_close {
 	my ($file, $reason) = @_;
 
 	$file->{closereason} = $reason;
-	vec ($ri, $file->{fileno}, 1) = 0;
-	vec ($ro, $file->{fileno}, 1) = 0;
+	if (exists $file->{fileno}) {
+		vec ($ri, $file->{fileno}, 1) = 0;
+		vec ($ro, $file->{fileno}, 1) = 0;
+	}
 	$file->{close} = 1;
 }
 
@@ -159,13 +168,11 @@ sub file_close_now {
 	my ($file, $reason) = @_;
 
 	$file->{closereason} = $reason if $reason;
-	my $i = $file->{fileno};
+	my $i = delete $file->{fileno};
 	delete $files[$i];
 	vec ($_, $i, 1) = 0 for $ri, $wi, $ro, $wo;
 	$file->{fh}->close; $! = 0;
 	$file->{close_cb} ($file) if $file->{close_cb};
-	$nfiles--;
-	# undef %$file;
 }
 
 sub timer_new {
@@ -189,8 +196,8 @@ sub timer_del {
 	my ($timer) = @_;
 
 	D && warn "debug $timer" if $timer;
+	#delete $timer->{cb}; # avoid memleaks
 	delete $timers{$timer};
-	# undef %$timer;
 }
 
 sub timer_reset {
@@ -204,8 +211,9 @@ sub loop_one {
 	D && warn "debug";
 
 	my ($t, $timer);
-	!$timer || $_->{timer} < $timer->{timer} and $timer = $_
-		for values %timers;
+	for (values %timers) {
+		$timer = $_ if !$timer || $_->{timer} < $timer->{timer};
+	}
 	if ($timer) {
 		$t = $timer->{timer} - time;
 		if ($t <= 0) {
@@ -220,19 +228,21 @@ sub loop_one {
 		}
 	}
 	D && warn "select $t sec";
-	select ($ro = $ri, $wo = $wi, undef, $t) >= 0
+	my $eo = $WIN ? $wi : undef;
+	select ($ro = $ri, $wo = $wi, $eo, $t) >= 0
 		or die 'select';
+	$wo |= $eo if $WIN;
 	$timei = time;
 
 	for my $i (0 .. $#files) {
 		my $file = $files[$i];
 		next if !$file;
-		$file->{read_cb} ($file)
-			if vec $ro, $i, 1;
 		$file->{write_cb} ($file)
 			if vec $wo, $i, 1;
 		file_close_now ($file)
 			if $file->{close} && !vec $wi, $i, 1;
+		$file->{read_cb} ($file)
+			if vec $ro, $i, 1;
 	}
 }
 
@@ -243,6 +253,7 @@ sub quit {
 
 sub loop {
 	$SIG{INT} = \&quit;
+	$SIG{PIPE} = sub { warn "error sigpipe\n" };
 	warn "started\n";
 	loop_one () while !$quit;
 	warn "stopped\n";
