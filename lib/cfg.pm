@@ -18,8 +18,10 @@ our %C = (
 	WEB_PASS		=> 'changeme',
 	WEB_PAGE_SIZE		=> 20,
 
-	NET_PERIOD		=> 1 * 60,
-	NET_PEERS		=> '127.0.0.1:8333,127.0.0.1:18883',
+	NET_PEERS		=> '127.0.0.1:8333,127.0.0.1:18444',
+	NET_PERIODIC		=> 60,
+	NET_TIMER_PING		=> 60,
+	NET_TIMER_INACT		=> 150,
 );
 
 sub cfg::var::TIEHASH { bless {}, $_[0] }

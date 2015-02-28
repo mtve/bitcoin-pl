@@ -16,7 +16,6 @@ sub D() { 1 }
 our $WIRE_MAGIC = "\xf9\xbe\xb4\xd9";
 our $VERSION = 70002;
 our $pszSubVer = ".0";
-our $DEFAULT_PORT = 8333;
 our $PUBLISH_HOPS = 5;
 our $NODE_NETWORK = 1 << 0;
 our $pchIPv4 = "\0" x 10 . "\xff" x 2;
@@ -295,15 +294,12 @@ sub start {
 		has_crc		=> 1,		# http://bitcoin.org/feb20
 	);
 	$file->{timer_ping} = event::timer_new (
-		period	=> 30 * 60,
-		cb	=> \&send_ping,
+		period	=> $cfg::var{NET_TIMER_PING},
+		cb	=> sub { send_ping ($file); },
 	);
 	$file->{timer_inact} = event::timer_new (
-		period	=> 90 * 60,
-		cb	=> sub {
-			local *__ANON__ = 'timer_inact.cb';
-			event::file_close ($file, 'inactivity');
-		},
+		period	=> $cfg::var{NET_TIMER_INACT},
+		cb	=> sub { event::file_close ($file, 'inactivity'); },
 	);
 
 	send_version ($file);
@@ -312,7 +308,7 @@ sub start {
 
 sub init {
 	event::timer_new (
-		period	=> $cfg::var{NET_PERIOD},
+		period	=> $cfg::var{NET_PERIODIC},
 		now	=> 1,
 		cb	=> sub {
 			local *__ANON__ = 'periodic';
