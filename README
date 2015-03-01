@@ -24,7 +24,6 @@ links:
 
 todo:
 - bip11 multisig
-- getheaders
 - bip34 block.nVersion=2 coinbase starts with serialized block height
 - bip66 dersig rules, for block.nVersion=3
 - other bips

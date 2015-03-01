@@ -37,6 +37,7 @@ sub page_sql {
 	my $html = '';
 	my $sql = $file->{http_param}{sql} || '';
 	if ($sql) {
+		warn "executing $sql";
 		my $res = eval { data::sql ($sql, $cfg::var{WEB_PAGE_SIZE}) };
 		if ($@) {
 			$html = <<HTML;
