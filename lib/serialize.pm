@@ -88,6 +88,7 @@ my %struct = (
 	notfound	=> \'CInv',
 	block		=> 'CBlock',
 	tx		=> 'CTransaction',
+	getheaders	=> 'getblocks',
 	alert		=> [
 		payload			=> 'Str',
 		signature		=> 'Str',
@@ -222,14 +223,14 @@ sub Serialize {
 
 	my $res;
 	if (!ref $type) {
-		$res =	$type eq 'Int32' ? SerializeInt32 ($value) :
+		$res =	$type eq '' ? '' :
+			$type eq 'Int32' ? SerializeInt32 ($value) :
 			$type eq 'Int64' ? SerializeInt64 ($value) :
 			$type eq 'Net16' ? SerializeNet16 ($value) :
 			$type eq 'Str' ? SerializeStr ($value) :
 			$type eq 'IP' ? SerializeIP ($value) :
 			$type eq 'Bin256' ||
 			$type =~ /^\d+\z/ ? $value :
-			$type eq '' ? '' :
 			exists $struct{$type} ?
 				Serialize ($struct{$type}, $value, 1) :
 				die  "unknown type $type";
@@ -256,14 +257,14 @@ sub Unserialize {
 
 	my $res;
 	if (!ref $type) {
-		$res =	$type eq 'Int32' ? UnserializeInt32 ($_[1]) :
+		$res =	$type eq '' ? '' :
+			$type eq 'Int32' ? UnserializeInt32 ($_[1]) :
 			$type eq 'Int64' ? UnserializeInt64 ($_[1]) :
 			$type eq 'Net16' ? UnserializeNet16 ($_[1]) :
 			$type eq 'Str' ? UnserializeStr ($_[1]) :
 			$type eq 'IP' ? UnserializeIP ($_[1]) :
 			$type eq 'Bin256' ? UnserializeBin ($_[1], 256 / 8) :
 			$type =~ /^\d+\z/ ? UnserializeBin ($_[1], $type) :
-			$type eq '' ? '' :
 			exists $struct{$type} ?
 				Unserialize ($struct{$type}, $_[1], 1) :
 				die  "unknown type $type";

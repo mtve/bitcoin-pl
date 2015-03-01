@@ -18,7 +18,7 @@ sub rotate {
 	select $fh; $|++; select STDOUT;
 	$! = 0;
 	tie *STDERR, __PACKAGE__;
-	warn "log rotated at ${\scalar localtime}\n";
+	warn "log rotated at ${\scalar localtime} pid $$ perl $^V on $^O\n";
 }
 
 sub TIEHANDLE { bless {} }

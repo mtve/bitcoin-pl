@@ -75,6 +75,13 @@ CREATE INDEX IF NOT EXISTS blk_tx_idx3 ON blk_tx (tx_hash);
 SQL
 
 my %STH = (
+	blk_genesis	=> <<SQL,
+
+SELECT	hash
+FROM	blk
+WHERE	mainBranch = 1 AND nHeight = 0
+
+SQL
 	blk_best	=> <<SQL,
 
 SELECT	hash
@@ -234,6 +241,8 @@ SQL
 		period	=> $cfg::var{DB_COMMIT_PERIOD},
 		cb	=> \&commit,
 	);
+	warn "using DBI $DBI::VERSION driver $dbh->{Driver}{Name} " .
+		"@{[ $dbh->get_info(18) ]}";
 }
 
 sub tx_save {
@@ -316,6 +325,12 @@ sub blk_load {
 
 	$blk->{vtx}[$_] = tx_load ($blk->{vtx_h}[$_])
 		for 0..$#{ $blk->{vtx_h} };
+}
+
+sub blk_genesis {
+	$sth{blk_genesis}->execute ();
+	my $h = $sth{blk_genesis}->fetchrow_hashref;
+	return $h && $h->{hash};
 }
 
 sub blk_best {

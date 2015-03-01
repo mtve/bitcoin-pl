@@ -6,6 +6,8 @@ use strict;
 my $NAME = 'bitcoin-pl.conf';
 
 our %C = (
+	CHAIN			=> 'regtest',
+
 	LOG_FILE_NAME		=> 'var/log',
 	LOG_FILES		=> 9,
 
@@ -29,7 +31,7 @@ sub cfg::var::FETCH { exists $C{$_[1]} ? $C{$_[1]} : die "no cfg var $_[1]" }
 
 tie our %var, 'cfg::var';
 
-sub load_ {
+sub load {
 	if (open my $f, $NAME) {
 		while (<$f>) {
 			next if /^[;#\*]|^\s*$/;
@@ -39,7 +41,7 @@ sub load_ {
 			warn "info \U$1\E = $2\n";
 		}
 	} else {
-		warn "info no config file $NAME, using defaults";
+		warn "info no config file $NAME ($!), using defaults";
 	}
 }
 

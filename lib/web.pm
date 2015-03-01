@@ -129,8 +129,11 @@ HTML
 }
 
 sub key_gen {
-	my $key = main::NewKey ();
-
+	my $key = ecdsa::GenKey ();
+	$key->{addr} = base58::PubKeyToAddress ($key->{pub});
+	$key->{remark} = "generated at " . localtime;
+	data::key_save ($key);
+	data::commit ();
 	return <<HTML;
 <p>Generated new key with address <b>$key->{addr}</b></p>
 HTML
@@ -189,6 +192,33 @@ sub check_sid {			# prevent xss
 	return $sid eq ($file->{http_param}{sid} || '');
 }
 
+my %scale = (
+	1			=> 's',
+	60			=> 'm',
+	60 * 60			=> 'h',
+	60 * 60 * 24		=> 'd',
+	60 * 60 * 24 * 30	=> 'm',
+	60 * 60 * 24 * 356	=> 'y',
+);
+
+sub ago {
+	my ($last) = @_;
+
+	my $t = time () - $last;
+	return "${t}s" if $t <= 0;
+
+	my $fl = 0;
+	my $s = '';
+	for (sort { $b <=> $a } keys %scale) {
+		if ($fl || $t >= $_) {
+			$s .= int ($t / $_) . $scale{$_};
+			$t -= int ($t / $_) * $_;
+			last if ++$fl == 3;
+		}
+	}
+	return $s;
+}
+
 sub page {
 	my ($file) = @_;
 
@@ -205,8 +235,9 @@ sub page {
 <title>Bitcoin in perl</title>
 </head><body>
 <h3><a href="http://www.bitcoin.org">Bitcoin</a> in perl</h3>
-<p>Blocks: <b>$main::blk_best->{nHeight}</b>,
-Your addresses: <b>${\data::key_cnt () }</b></p>
+<p>Blocks in $cfg::var{CHAIN} chain: <b>$main::blk_best->{nHeight}</b>,
+last block is <b>@{[ ago ($main::blk_best->{nTime}) ]}</b> ago,
+your addresses: <b>${\data::key_cnt () }</b></p>
 <p>
 <a href="/">Main</a> |
 <a href="/key?sid=$sid">Wallet</a> |

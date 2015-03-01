@@ -2,7 +2,7 @@
 
 use warnings;
 use strict;
-use Math::BigInt try => 'GMP,Pari';
+use Math::BigInt try => 'GMP,Pari'; # hint in advance
 use lib 'lib';
 
 use logger;
@@ -16,6 +16,7 @@ use cfg;
 our $VERSION = '140219';
 
 print "welcome to bitcoin perl v$VERSION\n";
+cfg::load ();
 logger::rotate ();
 data::init ();
 main::init ();

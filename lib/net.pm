@@ -10,10 +10,10 @@ use main;
 use base58;
 use util;
 use cfg;
+use chain;
 
 sub D() { 1 }
 
-our $WIRE_MAGIC = "\xf9\xbe\xb4\xd9";
 our $VERSION = 70002;
 our $pszSubVer = ".0";
 our $PUBLISH_HOPS = 5;
@@ -36,8 +36,10 @@ sub PushMessage {
 	event::timer_reset ($file->{timer_ping})
 		if $cmd ne 'ping';
 	event::file_write ($file, pack
-		'a4 Z12 V ' . ($file->{has_crc} ? 'a4' : 'a0') . ' a*',
-		$WIRE_MAGIC, $cmd, length $msg, base58::Hash ($msg), $msg);
+		'a4 Z12 V ' . ($file->{has_crc} ? 'a4' : 'a0') .
+		' a*',
+		$chain::WIRE_MAGIC, $cmd, length $msg, base58::Hash ($msg),
+		$msg);
 }
 
 sub state_hdr {
@@ -49,7 +51,7 @@ sub state_hdr {
 	return \&state_hdr if !defined $hdr;
 
 	@$file{qw( net_magic net_func net_len )} = unpack 'a4 Z12 V', $hdr;
-	$file->{net_magic} eq $WIRE_MAGIC
+	$file->{net_magic} eq $chain::WIRE_MAGIC
 		or die "got bad magic " . unpack 'H*', $hdr;
 	D && warn "debug func=$file->{net_func} len=$file->{net_len}";
 	$file->{net_len} < 1_000_000
@@ -158,6 +160,12 @@ sub got_ping {
 	PushMessage ($file, 'pong', $data);
 }
 
+sub got_pong {
+	my ($file, $data) = @_;
+
+	D && warn "debug";
+}
+
 sub PushGetData {
 	my ($file) = @_;
 
@@ -176,7 +184,7 @@ sub PushGetBlocks {
 	PushMessage ($file, 'getblocks', {
 		nVersion	=> $VERSION,
 		locator		=> [ $main::blk_best->{hash} ],
-		hashStop	=> $main::NULL256,
+		hashStop	=> $chain::NULL256,
 	});
 }
 
@@ -258,12 +266,17 @@ sub got_getblocks {
 	D && warn "debug";
 }
 
+sub got_getheaders {
+	my ($file, $gb) = @_;
+
+	D && warn "debug";
+}
+
 sub got_alert {
 	my ($file, $alert) = @_;
 
 	my $a = serialize::Unserialize ('alertPayload', $alert->{payload});
 	print "alert $a->{StatusBar}\n";
-	# 04fc9702847840aaf195de8442ebecedf5b095cdbb9bc716bda9110971b28a49e0ead8564ff0db22209e0374782c093bb899692d524e9d6a6956e7c5ecbcd68284
 }
 
 sub start {
@@ -306,21 +319,21 @@ sub start {
 	$peer = $file;
 }
 
+sub periodic {
+	return if $peer;
+	for (split ',', $cfg::var{NET_PEERS}) {
+		my ($ip, $port) = /^(.*):(\d+)\z/ or die "bad peer $_";
+		eval { start ($ip, $port); };
+		last if !$@;
+		warn "error $_ $@";
+	}
+}
+
 sub init {
 	event::timer_new (
 		period	=> $cfg::var{NET_PERIODIC},
 		now	=> 1,
-		cb	=> sub {
-			local *__ANON__ = 'periodic';
-			return if $peer;
-			for (split ',', $cfg::var{NET_PEERS}) {
-				my ($ip, $port) = /^(.*):(\d+)\z/
-					or die "bad peer $_";
-				eval { start ($ip, $port); };
-				last if !$@;
-				warn "error $_ $@";
-			}
-		}
+		cb	=> \&periodic,
 	);
 }
 

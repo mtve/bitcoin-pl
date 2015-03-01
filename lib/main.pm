@@ -9,38 +9,24 @@ use ecdsa;
 use data;
 use base58;
 use util;
+use chain;
 
 sub D() { 1 }
 sub DD() { 0 }
 
 our $CONFIRMATIONS = 10;
 
-our $COIN = 100000000;
-our $CENT = 1000000;
 our $COINBASE_MATURITY = 100;
 our $nTransactionFee = 0;
 our $bnProofOfWorkLimit_bits = 32;
 our $bnProofOfWorkLimit = ~pack 'B256', '0' x $bnProofOfWorkLimit_bits;
-
-our $NULL256 = "\0" x (256 / 8);
-our $ONES32 = 0xffffffff;
-
-our $pszTimestamp =
-	'The Times 03/Jan/2009 Chancellor on brink of second bailout for banks';
-our $GenesisPubKey = reverse pack 'H*',
-	'5F1DF16B2B704C8A578D0BBAF74D385CDE12C11EE50455F3C438EF4C3FBCF649' .
-	'B6DE611FEAE06279A60939E028A8D65C10B73071A6F16719274855FEB0FD8A6704';
-our $GenesisMerkleRoot = reverse pack 'H*',
-	'4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b';
-our $GenesisHash = reverse pack 'H*',
-	'000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f';
 
 our $blk_best;
 
 sub AmmoFormat {
 	my ($ammo) = @_;
 
-	$ammo / $COIN;
+	$ammo / $chain::COIN;
 }
 
 sub ConfirmHeight {
@@ -53,7 +39,7 @@ sub SetCompact256 {
 	my $nSize = $nCompact >> 24;
 	die "too big $nCompact"
 		if $nSize > 256 / 8;
-	my $res = $NULL256;
+	my $res = $chain::NULL256;
 	vec ($res, 32 - $nSize, 8) = $nCompact >> 16	if $nSize >= 1;
 	vec ($res, 33 - $nSize, 8) = $nCompact >> 8	if $nSize >= 2;
 	vec ($res, 34 - $nSize, 8) = $nCompact		if $nSize >= 3;
@@ -67,7 +53,7 @@ sub SetCompact256 {
 sub IsCoinBase {
 	my ($tx) = @_;
 
-	@{ $tx->{vin} } == 1 && $tx->{vin}[0]{prevout}{hash} eq $NULL256;
+	@{ $tx->{vin} } == 1 && $tx->{vin}[0]{prevout}{hash} eq $chain::NULL256;
 }
 
 sub TransactionIncome {
@@ -79,7 +65,7 @@ sub TransactionIncome {
 	for (0 .. $#{ $tx->{vin} }) {
 		my $prev = $tx->{vin}[$_]{prevout};
 		my $txFrom_h = $prev->{hash};
-		die "prevout is null" if $txFrom_h eq $NULL256;
+		die "prevout is null" if $txFrom_h eq $chain::NULL256;
 		my $nOut = $prev->{n};
 
 		my $txFrom = data::tx_load ($txFrom_h) ||
@@ -172,19 +158,13 @@ sub AddTransaction {
 	}
 }
 
-sub TransactionHash {
-	my ($tx) = @_;
-
-	return base58::Hash (serialize::Serialize ('CTransaction', $tx));
-}
-
 sub ProcessTransaction {
 	my ($tx) = @_;
 
 	die "coinbase as individual tx"
 		if IsCoinBase ($tx);
 
-	$tx->{hash} = TransactionHash ($tx);
+	$tx->{hash} = chain::TransactionHash ($tx);
 
 	if (data::tx_exists ($tx->{hash})) {
 		warn "tx $util::b2h{$tx->{hash}} already processed";
@@ -192,7 +172,7 @@ sub ProcessTransaction {
 	}
 
 	AddTransaction ($tx);
-	data::blk_tx_add ($NULL256, -1, $tx->{hash});
+	data::blk_tx_add ($chain::NULL256, -1, $tx->{hash});
 	warn "new tx $util::b2h{$tx->{hash}}";
 }
 
@@ -203,7 +183,7 @@ sub GetMinFee {
 
 	# Base fee is 1 cent per kilobyte
 	my $nBytes = length serialize::Serialize ('CTransaction', $tx);
-	my $nMinFee = int (1 + $nBytes / 1000) * $CENT;
+	my $nMinFee = int (1 + $nBytes / 1000) * $chain::CENT;
 
 	# Transactions under 60K are free as long as block size is under 80K
 	# (about 27,000bc if made of 50bc inputs)
@@ -215,9 +195,9 @@ sub GetMinFee {
 		if $nBytes < 3000 && $nBlockSize < 200000;
 
 	# To limit dust spam, require 0.01 fee if any output is less than 0.01
-	if ($nMinFee < $CENT) {
-		$nMinFee = $CENT
-			if grep $_->{nValue} < $CENT, @{ $tx->{vout} };
+	if ($nMinFee < $chain::CENT) {
+		$nMinFee = $chain::CENT
+			if grep $_->{nValue} < $chain::CENT, @{ $tx->{vout} };
 	}
 
 	D && warn "nBlockSize=$nBlockSize nBytes=$nBytes nMinFee=$nMinFee";
@@ -231,7 +211,7 @@ sub IsFinal {
 	$nBlockTime ||= time;
 	return 1 if $tx->{nLockTime} <
 		($tx->{nLockTime} < 500000000 ? $blk_best->{nHeight} : $nBlockTime);
-	return 0 if grep $_->{nSequence} != $ONES32, @{ $tx->{vin} };
+	return 0 if grep $_->{nSequence} != $chain::ONES32, @{ $tx->{vin} };
 	return 1;
 }
 
@@ -254,31 +234,6 @@ sub IsMine {
 	return ($key ? 'OP_PUBKEY' : 'OP_PUBKEYHASH', $k);
 }
 
-sub GetCredit_ {
-	my ($tx) = @_;
-
-	my $nCredit = 0;
-	$nCredit += $_->{nValue}
-		for grep IsMine ($_->{scriptPubKey}), @{ $tx->{vout} };
-	return $nCredit;	
-}
-
-sub GetDepthInMainChain_ {
-	my ($tx) = @_;
-
-	my $blk_h = $tx->{blk_h} or die "no block hash";
-	my $blk = data::blk_exists ($blk_h) or die "no block";
-	return $blk_best->{nHeight} - $blk->{nHeight} + 1;
-}
-
-sub GetBlocksToMaturity_ {
-	my ($tx) = @_;
-
-	return 0 if !IsCoinBase ($tx);
-	my $m = ($COINBASE_MATURITY + 20) - GetDepthInMainChain ($tx);
-	return $m > 0 ? $m : 0;
-}
-
 #
 # block
 #
@@ -286,65 +241,13 @@ sub GetBlocksToMaturity_ {
 sub GetBlockValue {
 	my ($nFees) = @_;
 
-	my $nSubsidy = 50 * $COIN;
+	my $nSubsidy = 50 * $chain::COIN;
 
 	# Subsidy is cut in half every 4 years
 	$nSubsidy /= 2 ** int ($blk_best->{nHeight} / 210000);
 
 	D && warn "$nSubsidy + $nFees";
 	return $nSubsidy + $nFees;
-}
-
-sub GetNextWorkRequired_ {
-	my ($block) = @_;
-
-	my $nTargetTimespan = 14 * 24 * 60 * 60;	# two weeks
-	my $nTargetSpacing = 10 * 60;
-	my $nInterval = $nTargetTimespan / $nTargetSpacing;
-
-	# Only change once per interval
-	return $block->{nBits}
-		if ($block->{nHeight} + 1) % $nInterval != 0;
-
-	# Go back by what we want to be 14 days worth of blocks
-	my $first = $block;
-	for (1 .. $nInterval - 1) {
-		die if !exists $first->{hashPrevBlock};
-		$first = data::blk_exists ($first->{hashPrevBlock}) or die;
-	}
-
-	my $nActualTimespan = $block->{nTime} - $first->{nTime};
-	D && warn "nActualTimespan = $nActualTimespan before bounds\n";
-	$nActualTimespan = int $nTargetTimespan / 4
-		if $nActualTimespan < $nTargetTimespan / 4;
-	$nActualTimespan = $nTargetTimespan * 4
-		if $nActualTimespan > $nTargetTimespan * 4;
-
-	# Retarget
-	my $bn_e = $block->{nBits} >> 24;
-	my $bn_m = $block->{nBits} & 0xffffff;
-	my $bn_mn = int $bn_m * $nActualTimespan / $nTargetTimespan;
-	if ($bn_mn > 0x7fffff) {
-		$bn_e++;
-		$bn_mn >>= 8;
-	} elsif ($bn_mn <= 0x007fff) {
-		$bn_e--;
-		$bn_mn = int 256 * $bn_m * $nActualTimespan / $nTargetTimespan;
-	}
-	die if $bn_mn > 0x7fffff || $bn_mn <= 0x007fff;
-	my $bn_emax = 256 / 8 - $bnProofOfWorkLimit_bits / 8 + 1;
-	$bn_e = $bn_emax, $bn_mn = 0x00ffff
-		if $bn_e > $bn_emax ||
-			($bn_e == $bn_emax && $bn_mn > 0x00ffff);
-	my $bn = ($bn_e << 24) | $bn_mn;
-
-	# debug print
-	D && warn "GetNextWorkRequired RETARGET\n";
-	D && warn "nTargetTimespan = $nTargetTimespan " .
-		"nActualTimespan = $nActualTimespan\n";
-	D && warn "Before: $block->{nBits} After: $bn\n";
-
-	return $bn;
 }
 
 sub BuildMerkleTree {
@@ -381,7 +284,7 @@ sub CheckBlock {
 	die "hash doesn't match nBits"
 		if reverse ($blk->{hash}) gt $compact;
 
-	$blk->{vtx_h} = [ map $_->{hash} = TransactionHash ($_), @$vtx ];
+	$blk->{vtx_h} = [ map $_->{hash} = chain::TransactionHash ($_), @$vtx ];
 
 	die "hashMerkleRoot mismatch"
 		if $blk->{hashMerkleRoot} ne BuildMerkleTree (@{ $blk->{vtx_h} });
@@ -448,7 +351,7 @@ sub ReconnectBlock {
 
 	D && warn "$util::b2h{$blk->{hash}}";
 
-	if ($blk->{hash} eq $GenesisHash) {
+	if ($blk->{hash} eq $chain::GenesisHash) {
 		$blk->{nHeight} = 0;
 		$blk->{mainBranch} = 1;
 	} else {
@@ -476,16 +379,10 @@ sub ReconnectBlock {
 	}
 }
 
-sub BlockHash {
-	my ($blk) = @_;
-
-	return base58::Hash (serialize::Serialize ('CBlockOnly', $blk));
-}
-
 sub ProcessBlock {
 	my ($blk) = @_;
 
-	$blk->{hash} = BlockHash ($blk);
+	$blk->{hash} = chain::BlockHash ($blk);
 	D && warn "$util::b2h{$blk->{hash}}";
 
 	if (data::blk_exists ($blk->{hash})) {
@@ -496,7 +393,7 @@ sub ProcessBlock {
 	CheckBlock ($blk);
 
 	AddTransaction ($_) for @{ $blk->{vtx} };
-	data::blk_tx_del ($NULL256, -1, $_) for @{ $blk->{vtx_h} };
+	data::blk_tx_del ($chain::NULL256, -1, $_) for @{ $blk->{vtx_h} };
 
 	$blk->{nHeight} = -1;
 	$blk->{mainBranch} = 0;
@@ -507,81 +404,21 @@ sub ProcessBlock {
 	return $blk->{nHeight} != -1;
 }
 
-sub GenesisBlock {
-	my $tx0	= {
-		nVersion	=> 1,
-		vin		=> [ {
-			prevout		=> {
-				hash		=> $NULL256,
-				n		=> $ONES32,
-			},
-			scriptSig	=>
-				script::Int (486604799) .
-				script::Bin ("\4") .
-				script::Bin ($pszTimestamp),
-			nSequence	=> $ONES32,
-		} ],
-		vout		=> [ {
-			nValue		=> 50 * $COIN,
-			scriptPubKey	=>
-				script::Bin ($GenesisPubKey) .
-				script::Op ('OP_CHECKSIG'),
-		} ],
-		nLockTime	=> 0,
-	};
-	my $blk0 = {
-		nVersion	=> 1,
-		hashPrevBlock	=> $NULL256,
-		hashMerkleRoot	=> TransactionHash ($tx0),
-		nTime		=> 1231006505,
-		nBits		=> 0x1d00ffff,
-		nNonce		=> 2083236893,
-		vtx		=> [ $tx0 ],
-	};
-
-	$blk0->{hashMerkleRoot} eq $GenesisMerkleRoot
-		or die "assert GenesisMerkleRoot";
-	BlockHash ($blk0) eq $GenesisHash
-		or die "assert GenesisHash";
-
-	return $blk0;
-}
-
 sub init () {
-	ProcessBlock (GenesisBlock ());
+	my $gen_h = data::blk_genesis ();
+	if ($gen_h) {
+		$gen_h eq $chain::GenesisHash or die "db of wrong chain";
+	} else {
+		ProcessBlock (chain::GenesisBlock ());
+	}
 	$blk_best = data::blk_best () or die "no best";
-	warn "best $blk_best->{nHeight} $util::b2h{$blk_best->{hash}}";
+	warn "chain $cfg::var{CHAIN} best $blk_best->{nHeight} " .
+		"$util::b2h{$blk_best->{hash}}";
 }
 
 #
 # action
 #
-
-sub GetBalance_ {
-	my $nTotal = 0;
-	for my $tx_h (keys my %XXX) {
-		my $tx = data::tx_load ($tx_h);
-		$nTotal += GetCredit ($tx)
-			if IsFinal ($tx) && !$tx->{fSpent};
-	}
-	return $nTotal;
-}
-
-sub SelectCoins_ {
-	my ($nTotalValue) = @_;
-
-	my @coins;
-	my $nTotal;
-	for my $tx_h (sort keys my %XXX) {
-		my $tx = data::tx_load ($tx_h);
-		IsFinal ($tx) && !$tx->{fSpent} or next;
-		my $val= GetCredit ($tx) or next;
-		push @coins, $tx;
-		$nTotal += $val;
-		return @coins if $nTotal >= $nTotalValue;
-	}
-	die "This is an oversized transaction";
-}
 
 sub SignatureHash {
 	my ($scriptCode, $txTo, $nIn, $nHashType) = @_;
@@ -614,7 +451,7 @@ sub SignatureHash {
 	return base58::Hash ($ss);
 }
 
-sub Solver {
+sub Solver_ {
 	my ($scriptPubKey, $hash, $nHashType) = @_;
 
 	my ($typ, $key) = IsMine ($scriptPubKey)
@@ -655,7 +492,7 @@ sub EvalScriptCheck {
 	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
 }
 
-sub SignSignature {
+sub SignSignature_ {
 	my ($txFrom, $txTo, $nIn, $nHashType) = @_;
 	$nHashType ||= $script::SIGHASH{ALL};
 
@@ -670,134 +507,10 @@ sub SignSignature {
 	my $hash = SignatureHash ($txout->{scriptPubKey}, $txTo, $nIn,
 	    $nHashType);
 
-	$txin->{scriptSig} = Solver ($txout->{scriptPubKey}, $hash, $nHashType);
+	$txin->{scriptSig} = Solver_ ($txout->{scriptPubKey}, $hash, $nHashType);
 
 	EvalScriptCheck ($txin->{scriptSig}, $txout->{scriptPubKey}, $txTo, $nIn)
 		or die "check failed";
-}
-
-sub NewKey {
-	my $key = ecdsa::GenKey ();
-	$key->{addr} = base58::PubKeyToAddress ($key->{pub});
-	$key->{remark} = "generated at " . localtime;
-	data::key_save ($key);
-	data::commit ();
-	return $key;
-}
-
-sub CreateTransaction_ {
-	my ($scriptPubKey, $nValue) = @_;
-
-	my $tx = {
-		nVersion	=> 1,
-		nLockTime	=> 0,
-	};
-	my $nFee = $nTransactionFee;
-	my $key;
-
-AGAIN:	$tx->{vin} = [];
-        $tx->{vout} = [];
-	die if $nValue < 0;
-	my $nValueOut = $nValue;
-	my $nTotalValue = $nValue + $nFee;
-
-	# Choose coins to use
-	my @setCoins = SelectCoins ($nTotalValue);
-	my $nValueIn = 0;
-	$nValueIn += GetCredit ($_) for @setCoins;
-
-	# Fill a vout to the payee
-	my $fChangeFirst = rand () < .5;
-	push @{ $tx->{vout} }, {
-		nValue		=> $nValueOut,
-		scriptPubKey	=> $scriptPubKey,
-	} if !$fChangeFirst;
-
-	# Fill a vout back to self with any change
-	if ($nValueIn > $nTotalValue) {
-		# Note: We use a new key here to keep it from being obvious which side is the change.
-		# The drawback is that by not reusing a previous key, the change may be lost if a
-		# backup is restored, if the backup doesn't have the new private key for the change.
-		# If we reused the old key, it would be possible to add code to look for and
-		# rediscover unknown transactions that were written with keys of ours to recover
-		# post-backup change.
-
-		# New private key
-		$key = NewKey () if !$key;
-
-		# Fill a vout to ourself, using same address type as the payment
-		my $scriptChange =
-			script::GetBitcoinAddressHash160 ($scriptPubKey) ?
-				script::SetBitcoinAddress
-					(base58::Hash160 ($key->{pub})) :
-				script::Bin ($key->{pub}) .
-				script::Op ('OP_CHECKSIG');
-		push @{ $tx->{vout} }, {
-			nValue		=> $nValueIn - $nTotalValue,
-			scriptPubKey	=> $scriptChange,
-		};
-	}
-
-	# Fill a vout to the payee
-	push @{ $tx->{vout} }, {
-		nValue		=> $nValueOut,
-		scriptPubKey	=> $scriptPubKey,
-	} if $fChangeFirst;
-
-	# Fill vin
-	my @txFrom = ();
-	for my $pcoin (@setCoins) {
-		my $tx_h = TransactionHash ($pcoin);
-		for my $nOut (0 .. $#{ $pcoin->{vout} }) {
-			IsMine ($pcoin->{vout}[$nOut]{scriptPubKey}) or next;
-			push @{ $tx->{vin} }, {
-				prevout		=> {
-					hash		=> $tx_h,
-					n		=> $nOut,
-				},
-				scriptSig	=> '',
-				nSequence	=> $ONES32,				
-			};
-			push @txFrom, $pcoin;
-		}
-	}
-
-	# Sign
-	SignSignature ($txFrom[$_], $tx, $_) for 0 .. $#{ $tx->{vin} };
-
-	# Check that enough fee is included
-	my $nFeeMin = GetMinFee ($tx);
-	if ($nFee < $nFeeMin) {
-		$nFee = $nFeeMin;
-		goto AGAIN;
-	}
-
-	# Fill vtxPrev by copying from previous transactions vtxPrev
-	#AddSupportingTransactions ($tx);	# XXX
-	#tx->{fTimeReceivedIsTxTime} = 1;
-
-	return ($tx, $key, $nFee);
-}
-
-sub CommitTransaction_ {
-	my ($wtxNew, $key) = @_;
-
-	# XXX
-}
-
-sub SendMoneyToBitcoinAddress_ {
-	my ($strAddress, $nValue) = @_;
-
-	die "Invalid amount"
-		if $nValue < 0;
-	die "Insufficient funds"
-		if $nValue + $nTransactionFee > GetBalance ();
-
-	my $scriptPubKey = script::SetBitcoinAddress
-		(base58::AddressToHash160 ($strAddress));
-	my ($wtxNew, $key, $nFeeRequired) =
-		CreateTransaction ($scriptPubKey, $nValue);
-	CommitTransaction ($wtxNew, $key);
 }
 
 1;
