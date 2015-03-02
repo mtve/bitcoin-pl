@@ -17,8 +17,8 @@ sub rotate {
 	open $fh, '>', $file
 		or die "open $file: $!";
 	select $fh; $|++; select STDOUT;
+	$last_d = (localtime)[4];
 	$! = 0;
-	tie *STDERR, __PACKAGE__;
 	warn "log rotated at ${\scalar localtime} pid $$ perl $^V on $^O\n";
 }
 
@@ -30,7 +30,7 @@ sub PRINT {
 	$msg =~ s/\n\z//;
 	$msg .= " errno=$!(" . int ($!) . ')', $! = 0 if $!;
 	my ($s, $m, $h, $d) = localtime;
-	$last_d = $d, rotate () if !$last_d || $last_d != $d;
+	rotate () if !$last_d || $last_d != $d;
 	printf { $fh || *STDERR } "%02d:%02d:%02d %s %s \n",
 	    $h, $m, $s, (caller 1)[3] || '?', $msg;
 }
@@ -46,5 +46,7 @@ sub trace {
 	print STDERR $msg;
 	exit 1;
 }
+
+tie *STDERR, __PACKAGE__;
 
 1;
