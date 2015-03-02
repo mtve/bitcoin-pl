@@ -226,7 +226,7 @@ our %Exe; %Exe = (
 		# last byte of sig is tx type
 		$sig =~ s/\C\z// or die "empty sig";
 #XXX provide cb to Exe
-		Push (bool (ecdsa::Verify ({ pub => $pub }, $hash, $sig)));
+		Push bool (ecdsa::Verify ({ pub => $pub }, $hash, $sig));
 	},
 	OP_SHA256		=> sub { Push base58::sha256 (Pop) },
 	OP_HASH160		=> sub { Push base58::Hash160 (Pop) },
@@ -252,11 +252,11 @@ sub Exe {
 		my ($op, $par) = GetOp ($script);
 		warn "$op $X{$par} stack @X{@stack}\n";
 		if ($op =~ /^OP_PUSHDATA/) {
-			Push ($par);
+			Push $par;
 		} elsif ($op =~ /^OP_NOP\d+\z/) {
 			# nothing
 		} elsif ($op =~ /^OP_(\d+)\z/) {
-			Push (chr $1);
+			Push chr $1;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
 		} else {
