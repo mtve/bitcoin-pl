@@ -6,6 +6,7 @@ use strict;
 use cfg;
 
 our $fh;
+our $last_d;
 
 sub rotate {
 	my $file = $cfg::var{LOG_FILE_NAME};
@@ -28,7 +29,8 @@ sub PRINT {
 
 	$msg =~ s/\n\z//;
 	$msg .= " errno=$!(" . int ($!) . ')', $! = 0 if $!;
-	my ($s, $m, $h) = localtime;
+	my ($s, $m, $h, $d) = localtime;
+	$last_d = $d, rotate () if !$last_d || $last_d != $d;
 	printf { $fh || *STDERR } "%02d:%02d:%02d %s %s \n",
 	    $h, $m, $s, (caller 1)[3] || '?', $msg;
 }
