@@ -1,5 +1,7 @@
 package util;
 
+# autoexport %X
+
 use warnings;
 use strict;
 
@@ -35,6 +37,13 @@ sub util::html_esc::FETCH {
 }
 
 tie our %hesc, 'util::html_esc';
+
+sub import {
+	my $pkg = caller;
+	no strict 'refs';
+	*{"$pkg\::X"} = \%b2h;
+	*{"$pkg\::Xr"} = \%b2hr;
+}
 
 #
 # asn.1

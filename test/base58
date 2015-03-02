@@ -5,6 +5,7 @@ use strict;
 use lib '../lib';
 
 use base58;
+use util;
 
 my $a = '2a96AezpWz3sNt';
 my $b = base58::DecodeBase58Check ($a);
@@ -30,3 +31,6 @@ $c = base58::Hash160ToAddress ($b);
 
 $a eq $c or die $c;
 print "ok\n";
+
+my $x = reverse $util::h2b{'04678afd04678a'};
+print "$X{$x} $X{reverse base58::sha256 ($x)}\n";

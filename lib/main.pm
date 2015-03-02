@@ -60,7 +60,7 @@ sub TransactionIncome {
 	my ($tx, $last_tx, $spent) = @_;
 
 	my $sum = 0;
-	my $last = "last_tx: @util::b2h{ sort keys %$last_tx }";
+	my $last = "last_tx: @X{ sort keys %$last_tx }";
 
 	for (0 .. $#{ $tx->{vin} }) {
 		my $prev = $tx->{vin}[$_]{prevout};
@@ -69,7 +69,7 @@ sub TransactionIncome {
 		my $nOut = $prev->{n};
 
 		my $txFrom = data::tx_load ($txFrom_h) ||
-		    $last_tx->{$txFrom_h} || die "no tx $util::b2h{$txFrom_h}";
+		    $last_tx->{$txFrom_h} || die "no tx $X{$txFrom_h}";
 		$nOut < @{ $txFrom->{vout} }
 			or die "bad n $nOut";
 
@@ -82,10 +82,8 @@ sub TransactionIncome {
 		my $scriptPubKey = $txFrom->{vout}[$nOut]{scriptPubKey};
 		my $scriptSig = $tx->{vin}[$_]{scriptSig};
 
-		D && warn "$util::b2h{$tx->{hash}} $_ <- " .
-		    "$util::b2h{$txFrom_h} $nOut =$nValue " .
-		    "$util::b2hr{$scriptSig} <- $util::b2hr{$scriptPubKey} ".
-		    "$last";
+		D && warn "$X{$tx->{hash}}:$_ <- $X{$txFrom_h}:$nOut " .
+		    "=$nValue $Xr{$scriptSig} <= $Xr{$scriptPubKey} $last";
 
 		EvalScriptCheck ($scriptSig, $scriptPubKey, $tx, $_)
 			or die "tx check failed";
@@ -102,7 +100,7 @@ sub TransactionOutcome {
 	for (0 .. $#{ $tx->{vout} }) {
 		my $v = $tx->{vout}[$_]{nValue};
 		die "txout.nValue negative" if $v >= 2**62;
-		D && warn "$util::b2h{$tx->{hash}} $_ -> +$v";
+		D && warn "$X{$tx->{hash}} $_ -> +$v";
 		$sum += $v;
 	}
 	return $sum;
@@ -114,7 +112,7 @@ sub CheckTransaction {
 	die "vin or vout empty"
 		if !@{ $tx->{vin} } || !@{ $tx->{vout} };
 
-	D && warn "$util::b2h{$tx->{hash}}";
+	D && warn "$X{$tx->{hash}}";
 
 	my ($out, $in, $fee);
 	if (IsCoinBase ($tx)) {
@@ -125,13 +123,13 @@ sub CheckTransaction {
 		$in = 0;
 		$out = TransactionOutcome ($tx);
 		$fee = GetBlockValue (0);
-		D && warn "$util::b2h{$tx->{hash}} coin out=$out fee=$fee";
+		D && warn "$X{$tx->{hash}} coin out=$out fee=$fee";
 	} else {
 		$in = TransactionIncome ($tx, $last_tx, $spent);
 		$out = TransactionOutcome ($tx);
 		$fee = GetMinFee ($tx);
-		D && warn "$util::b2h{$tx->{hash}} in=$in fee=$fee out=$out";
-		warn "XXX fix getminfree $util::b2h{$tx->{hash}} $out > $in - $fee"
+		D && warn "$X{$tx->{hash}} in=$in fee=$fee out=$out";
+		warn "XXX fix getminfree $X{$tx->{hash}} $out > $in - $fee"
 			if $out > $in - $fee;
 	}
 	$last_tx->{$tx->{hash}} = $tx;
@@ -154,7 +152,7 @@ sub TransactionFixOutAddr {
 sub AddTransaction {
 	my ($tx) = @_;
 
-	D && warn "add tx $util::b2h{$tx->{hash}}";
+	D && warn "add tx $X{$tx->{hash}}";
 	if (!data::tx_exists ($tx->{hash})) {
 		TransactionFixOutAddr ($tx);
 		data::tx_save ($tx->{hash}, $tx);
@@ -170,13 +168,13 @@ sub ProcessTransaction {
 	$tx->{hash} = chain::TransactionHash ($tx);
 
 	if (data::tx_exists ($tx->{hash})) {
-		warn "tx $util::b2h{$tx->{hash}} already processed";
+		warn "tx $X{$tx->{hash}} already processed";
 		return;
 	}
 
 	AddTransaction ($tx);
 	data::blk_tx_add ($chain::NULL256, -1, $tx->{hash});
-	warn "new tx $util::b2h{$tx->{hash}}";
+	warn "new tx $X{$tx->{hash}}";
 }
 
 sub GetMinFee {
@@ -259,14 +257,14 @@ sub BuildMerkleTree {
 	@h = map base58::Hash ($h[$_] . $h[$_ + ($_ < $#h)]),
 		map $_ * 2, 0 .. $#h / 2
 			while @h > 1;
-	DD && warn "$util::b2h{$h[0]}";
+	DD && warn "$X{$h[0]}";
 	return $h[0];
 }
 
 sub CheckBlock {
 	my ($blk) = @_;
 
-	D && warn "$util::b2h{$blk->{hash}}";
+	D && warn "$X{$blk->{hash}}";
 
 	my $vtx = $blk->{vtx};
 
@@ -280,7 +278,7 @@ sub CheckBlock {
 		if grep IsCoinBase ($vtx->[$_]), 1..$#$vtx;
 
 	my $compact = SetCompact256 ($blk->{nBits});
-	DD && warn "$util::b2h{$compact}";
+	DD && warn "$X{$compact}";
 
 	die "nBits below minimum work"
 		if $compact gt $bnProofOfWorkLimit;
@@ -302,12 +300,12 @@ sub SpentBlock {
 
 	$sum += CheckTransaction ($_, $last_tx, $spent) for @{ $blk->{vtx} };
 
-	D && warn "$util::b2h{$blk->{hash}} sum $sum";
-	$sum <= 0 or die "$util::b2h{$blk->{hash}} sum $sum is positive";
+	D && warn "$X{$blk->{hash}} sum $sum";
+	$sum <= 0 or die "$X{$blk->{hash}} sum $sum is positive";
 
 	for my $tx_h (keys %$spent) {
 	for my $n (keys %{ $spent->{$tx_h} }) {
-		D && warn "spent $util::b2h{$tx_h} $n at $blk->{nHeight}";
+		D && warn "spent $X{$tx_h} $n at $blk->{nHeight}";
 		data::tx_out_spent ($tx_h, $n, $blk->{nHeight});
 	}}
 }
@@ -315,7 +313,7 @@ sub SpentBlock {
 sub SwitchBranch {
 	my ($blk) = @_;
 
-	D && warn "$util::b2h{$blk->{hash}}";
+	D && warn "$X{$blk->{hash}}";
 
 	my @new;
 	my $fork = $blk;
@@ -332,9 +330,9 @@ sub SwitchBranch {
 		$b = data::blk_exists ($b->{hashPrevBlock}) or die;
 	}
 
-	D && warn "fork $util::b2h{$fork->{hash}}" .
-		" old (@util::b2h{map $_->{hash}, @old})" .
-		" new (@util::b2h{map $_->{hash}, @new})";
+	D && warn "fork $X{$fork->{hash}}" .
+		" old (@X{map $_->{hash}, @old})" .
+		" new (@X{map $_->{hash}, @new})";
 
 	data::tx_trimmain ($fork->{nHeight} + 1) if @old;
 	for (@old) {
@@ -352,7 +350,7 @@ sub SwitchBranch {
 sub ReconnectBlock {
 	my ($blk) = @_;
 
-	D && warn "$util::b2h{$blk->{hash}}";
+	D && warn "$X{$blk->{hash}}";
 
 	if ($blk->{hash} eq $chain::GenesisHash) {
 		$blk->{nHeight} = 0;
@@ -374,7 +372,7 @@ sub ReconnectBlock {
 		if !$blk_best || $blk->{nHeight} > $blk_best->{nHeight};
 
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
-		"block $util::b2h{$blk->{hash}}";
+		"block $X{$blk->{hash}}";
 
 	if ($blk->{nHeight} != -1) {
 		ReconnectBlock (data::blk_exists ($_))
@@ -386,10 +384,10 @@ sub ProcessBlock {
 	my ($blk) = @_;
 
 	$blk->{hash} = chain::BlockHash ($blk);
-	D && warn "$util::b2h{$blk->{hash}}";
+	D && warn "$X{$blk->{hash}}";
 
 	if (data::blk_exists ($blk->{hash})) {
-		warn "block $util::b2h{$blk->{hash}} already processed";
+		warn "block $X{$blk->{hash}} already processed";
 		return 1;
 	}
 
@@ -416,7 +414,7 @@ sub init () {
 	}
 	$blk_best = data::blk_best () or die "no best";
 	warn "chain $cfg::var{CHAIN} best $blk_best->{nHeight} " .
-		"$util::b2h{$blk_best->{hash}}";
+		"$X{$blk_best->{hash}}";
 }
 
 #
@@ -426,19 +424,7 @@ sub init () {
 sub SignatureHash {
 	my ($scriptCode, $txTo, $nIn, $nHashType) = @_;
 
-	# hello, block 110300 last tx
-	$nHashType ||= 0;
-
-	# block 154012 last tx
-	$nHashType == $script::SIGHASH{ALL}
-		or warn ("nHashType $nHashType is not supported"), return;
-
-	$nIn < @{ $txTo->{vin} }
-		or die "assert";
-
-	# In case concatenating two scripts ends up with two codeseparators,
-	# or an extra one at the end, this prevents all those possible incompatibilities.
-	#??? script::FindAndDelete ($scriptCode, 'OP_CODESEPARATOR');
+	$nIn < @{ $txTo->{vin} } or die "assert";
 
 	my $txTmp = {
 		nVersion	=> $txTo->{nVersion},
@@ -454,66 +440,15 @@ sub SignatureHash {
 	return base58::Hash ($ss);
 }
 
-sub Solver_ {
-	my ($scriptPubKey, $hash, $nHashType) = @_;
-
-	my ($typ, $key) = IsMine ($scriptPubKey)
-		or die "not mine";
-	my $sig = ecdsa::Sign ($key, $hash);
-	my $scriptSig = script::Bin ($sig . pack 'C', $nHashType) .
-		($typ eq 'OP_PUBKEYHASH' ? script::Bin ($key->{pub}) : '');
-	return $scriptSig;
-}
-
 sub EvalScriptCheck {
 	my ($scriptSig, $scriptPubKey, $txTo, $nIn) = @_;
 
-	my ($op, $sig) = script::GetOp ($scriptSig)
-		or warn ("no getop"), return;
-	$op =~ /^OP_PUSHDATA/
-		or warn ("$op not OP_PUSHDATA*"), return;
-	$sig =~ s/(\C)\z//
-		or warn ("short sig"), return;
+	$scriptSig =~ /(\C)\z/ or warn ("short sig"), return;
 	my $nHashType = ord $1;
 
 	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType)
 		or return;
-
-	my $pub = script::GetPubKey ($scriptPubKey);
-	if (!$pub) {
-		my $pub_h = script::GetBitcoinAddressHash160 ($scriptPubKey)
-			or warn ("no addr"), return;
-		($op, $pub) = script::GetOp ($scriptSig)
-			or warn ("no script"), return;
-		$op eq 'OP_PUSHDATA'
-			or warn ("second $op not OP_PUSHDATA"), return;
-		base58::Hash160 ($pub) eq $pub_h
-			or warn ("bad hash"), return;
-	}
-	$scriptSig eq ''
-		or warn ("garbage"), return;
-	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
-}
-
-sub SignSignature_ {
-	my ($txFrom, $txTo, $nIn, $nHashType) = @_;
-	$nHashType ||= $script::SIGHASH{ALL};
-
-	$nIn < @{ $txTo->{vin} } or die "assert";
-	my $txin = $txTo->{vin}[$nIn];
-	$txin->{prevout}{n} < @{ $txFrom->{vout} } or die "assert";
-	my $txout = $txFrom->{vout}[ $txin->{prevout}{n} ];
-
-	# Leave out the signature from the hash, since a signature can't 
-	# sign itself.
-	# The checksig op will also drop the signatures from its hash.
-	my $hash = SignatureHash ($txout->{scriptPubKey}, $txTo, $nIn,
-	    $nHashType);
-
-	$txin->{scriptSig} = Solver_ ($txout->{scriptPubKey}, $hash, $nHashType);
-
-	EvalScriptCheck ($txin->{scriptSig}, $txout->{scriptPubKey}, $txTo, $nIn)
-		or die "check failed";
+	return script::Exe ($scriptSig . $scriptPubKey, $hash);
 }
 
 1;

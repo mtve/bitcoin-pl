@@ -3,6 +3,10 @@ package script;
 use warnings;
 use strict;
 
+use util;
+use base58;
+use ecdsa;
+
 our %SIGHASH = (
 	ALL			=> 1,
 	NONE			=> 2,
@@ -153,16 +157,14 @@ our %OP = (
 
 our %ROP = reverse %OP;
 
-our $EXE;
-
-# $EXE[ $OP{OP_...} ] = sub { ... }
-
 sub Int {
 	my ($i) = @_;
 
 	return	$i == -1 ?
 			chr $OP{OP_1NEGATE} :
-		$i >= 1 && $i <= 16 ?
+		$i < 0 ?
+			die "$i" :
+		$i >= 0 && $i <= 16 ?
 			chr $OP{"OP_$i"} :
 		Bin (pack
 			$i < 2**8 ? 'C' :
@@ -201,9 +203,62 @@ sub GetOp {
 		$op == $OP{OP_PUSHDATA1} ? ($ROP{$op}, unpack 'C/a a*', $_[0]) :
 		$op == $OP{OP_PUSHDATA2} ? ($ROP{$op}, unpack 'v/a a*', $_[0]) :
 		$op == $OP{OP_PUSHDATA4} ? ($ROP{$op}, unpack 'V/a a*', $_[0]) :
-		exists $ROP{$op} ? ($ROP{$op}, undef, $_[0]) :
+		exists $ROP{$op} ? ($ROP{$op}, '', $_[0]) :
 		die "unknown tag $op";
 	return wantarray ? ($op, $par) : $op;
+}
+
+sub bool { $_[0] ? chr 1 : chr 0 }
+sub true { $_[0] eq chr 1 }
+
+sub Exe {
+	my ($script, $hash) = @_;
+
+	my @st;
+	my $pop = sub { @st ? pop @st : die "empty stack" };
+	my $push = sub { push @st, @_ };
+
+	my %exe; %exe = (
+	OP_1NEGATE	=> sub { $push->("\x81") },
+	OP_DUP		=> sub { my $el = $pop->(); $push->($el, $el) },
+	OP_CHECKSIG	=> sub {
+		my $pub = $pop->();
+		my $sig = $pop->();
+		# last byte of sig is tx type
+		$sig =~ s/\C\z// or die "empty sig";
+		$push->(bool (ecdsa::Verify ({ pub => $pub }, $hash, $sig)));
+	},
+	OP_SHA256	=> sub { $push->(base58::sha256 ($pop->())) },
+	OP_HASH160	=> sub { $push->(base58::Hash160 ($pop->())) },
+	OP_EQUAL	=> sub { $push->(bool ($pop->() eq $pop->())) },
+	OP_VERIFY	=> sub { true ($pop->()) || die "invalid" },
+	OP_EQUALVERIFY	=> sub { $exe{OP_EQUAL} (); $exe{OP_VERIFY} (); },
+	OP_CHECKSIGVERIFY => sub { $exe{OP_CHECKSIG} (); $exe{OP_VERIFY} (); },
+	# OP_IF OP_NOTIF OP_ELSE OP_ENDIF
+	# stack ops
+	# OP_SIZE
+	# arithmetic
+	# OP_RIPEMD160 OP_SHA1 OP_HASH256
+	# OP_CODESEPARATOR?
+	# OP_CHECKMULTISIG OP_CHECKMULTISIGVERIFY
+	);
+
+	while (length $script) {
+		my ($op, $par) = GetOp ($script);
+		warn "$op $X{$par} stack @X{@st}\n";
+		if ($op =~ /^OP_PUSHDATA/) {
+			$push->($par);
+		} elsif ($op =~ /^OP_NOP\d+\z/) {
+			# nothing
+		} elsif ($op =~ /^OP_(\d+)\z/) {
+			$push->(chr $1);
+		} elsif (exists $exe{$op}) {
+			$exe{$op} ();
+		} else {
+			die "$op is not implemented";
+		}
+	}
+	return true ($pop->());
 }
 
 sub Parse {
@@ -229,6 +284,11 @@ sub SetBitcoinAddress {
 	Op ('OP_CHECKSIG');
 }
 
+# fix for blocks 71036 and 127630
+my $nop = Op ('OP_NOP');
+my $cs = Op ('OP_CHECKSIG');
+my $fix1 = qr/^($nop|$cs)+\z/o;
+
 sub GetBitcoinAddressHash160 {
 	my ($script) = @_;
 
@@ -238,12 +298,7 @@ sub GetBitcoinAddressHash160 {
 	$op eq 'OP_PUSHDATA' && length ($hash) == 160 / 8	or return;
 	GetOp ($script) eq 'OP_EQUALVERIFY'			or return;
 	GetOp ($script) eq 'OP_CHECKSIG'			or return;
-
-	# fix for blocks 71036 and 127630
-	my $nop = chr $OP{OP_NOP};
-	my $cs  = chr $OP{OP_CHECKSIG};
-	$script =~ s/^($nop|$cs)+\z//;
-
+	$script =~ s/$fix1//;
 	$script eq ''						or return;
 	return $hash;
 }

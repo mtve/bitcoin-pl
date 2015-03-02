@@ -54,7 +54,7 @@ HTML
 <tr>@{[ map "<td><b>$util::hesc{$_}</b></td>", @col ]}</tr>
 HTML
 			$html .= <<HTML for @$res;
-<tr>@{[ map "<td>$util::hesc{ /[^ -~]/ ? $util::b2h{$_} : $_ }</td>",
+<tr>@{[ map "<td>$util::hesc{ /[^ -~]/ ? $X{$_} : $_ }</td>",
 	@$_{@col} ]}</tr>
 HTML
 			$html .= <<HTML;

@@ -170,7 +170,7 @@ sub PushGetData {
 	my ($file) = @_;
 
 	my @h = data::blk_missed ();
-	D && warn "debug @util::b2h{@h}";
+	D && warn "debug @X{@h}";
 
 	PushMessage ($file, 'getdata', [ map +{
 		type	=> $MSG_BLOCK,
