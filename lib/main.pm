@@ -80,12 +80,15 @@ sub TransactionIncome {
 		
 		my $nValue = $txFrom->{vout}[$nOut]{nValue};
 		my $scriptPubKey = $txFrom->{vout}[$nOut]{scriptPubKey};
+		my $scriptSig = $tx->{vin}[$_]{scriptSig};
 
 		D && warn "$util::b2h{$tx->{hash}} $_ <- " .
-		    "$util::b2h{$txFrom_h} $nOut =$nValue $last";
+		    "$util::b2h{$txFrom_h} $nOut =$nValue " .
+		    "$util::b2hr{$scriptSig} <- $util::b2hr{$scriptPubKey} ".
+		    "$last";
 
-		EvalScriptCheck ($tx->{vin}[$_]{scriptSig}, $scriptPubKey,
-			$tx, $_) or die "tx check failed";
+		EvalScriptCheck ($scriptSig, $scriptPubKey, $tx, $_)
+			or die "tx check failed";
 
 		$sum += $nValue;
 	}
@@ -474,7 +477,7 @@ sub EvalScriptCheck {
 	my $nHashType = ord $1;
 
 	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType)
-		or return 'wtf';
+		or return;
 
 	my $pub = script::GetPubKey ($scriptPubKey);
 	if (!$pub) {

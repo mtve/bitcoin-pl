@@ -12,6 +12,11 @@ sub util::bin2hex::FETCH { unpack 'H*', reverse $_[1] }
 
 tie our %b2h, 'util::bin2hex';
 
+sub util::bin2hexr::TIEHASH { bless {}, $_[0] }
+sub util::bin2hexr::FETCH { unpack 'H*', $_[1] }
+
+tie our %b2hr, 'util::bin2hexr';
+
 # hex2bin
 
 sub util::hex2bin::TIEHASH { bless {}, $_[0] }

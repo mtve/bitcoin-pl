@@ -41,7 +41,7 @@ sub load {
 			warn "info \U$1\E = $2\n";
 		}
 	} else {
-		warn "info no config file $NAME ($!), using defaults";
+		warn "no config file $NAME ($!), using defaults\n";
 	}
 }
 
