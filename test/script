@@ -43,5 +43,9 @@ $s .= pack 'H*', '21036db395160d10ac49a4dd1089c280546c789ff1bf6a6c6ee9b05ae6148c
 my $h = reverse pack 'H*', 'd3df10eec68bfc02026c35c5cb4c88e29e735307a5552236c78f9fac91157db8';
 
 $ecdsa::PROB_VERIFY = 1;
-script::Exe ($s, $h) or die "no exe";
+script::Exe ($s, sub {
+	my ($sig, $pub) = @_;
+	$sig =~ s/\C\z// or die "empty sig";
+	return ecdsa::Verify ({ pub => $pub }, $h, $sig);
+}) or die "no exe";
 print "ok\n";

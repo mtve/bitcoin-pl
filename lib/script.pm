@@ -211,7 +211,7 @@ sub GetOp {
 sub bool { $_[0] ? chr 1 : chr 0 }
 sub true { $_[0] eq chr 1 }
 
-our (@stack, $hash); # will be localized
+our (@stack, $checksig_cb); # will be localized
 
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
@@ -220,20 +220,17 @@ sub Verify() { true (Pop) || die "fail" }
 our %Exe; %Exe = (
 	OP_1NEGATE		=> sub { Push "\x81" },
 	OP_DUP			=> sub { my $el = Pop; Push $el, $el },
-	OP_CHECKSIG		=> sub {
-		my $pub = Pop;
-		my $sig = Pop;
-		# last byte of sig is tx type
-		$sig =~ s/\C\z// or die "empty sig";
-#XXX provide cb to Exe
-		Push bool (ecdsa::Verify ({ pub => $pub }, $hash, $sig));
-	},
 	OP_SHA256		=> sub { Push base58::sha256 (Pop) },
 	OP_HASH160		=> sub { Push base58::Hash160 (Pop) },
 	OP_EQUAL		=> sub { Push bool (Pop eq Pop) },
 	OP_VERIFY		=> \&Verify,
 	OP_EQUALVERIFY		=> sub { $Exe{OP_EQUAL} (); Verify; },
 	OP_CHECKSIGVERIFY	=> sub { $Exe{OP_CHECKSIG} (); Verify; },
+	OP_CHECKSIG		=> sub {
+		my $pub = Pop;
+		my $sig = Pop;
+		Push bool ($checksig_cb->($sig, $pub));
+	},
 	# OP_IF OP_NOTIF OP_ELSE OP_ENDIF
 	# stack ops
 	# OP_SIZE
@@ -244,10 +241,10 @@ our %Exe; %Exe = (
 );
 
 sub Exe {
-	my ($script, $h) = @_;
+	my ($script, $cb) = @_;
 
 	local @stack;
-	local $hash = $h;
+	local $checksig_cb = $cb;
 	while (length $script) {
 		my ($op, $par) = GetOp ($script);
 		warn "$op $X{$par} stack @X{@stack}\n";

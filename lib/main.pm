@@ -440,16 +440,30 @@ sub SignatureHash {
 	return base58::Hash ($ss);
 }
 
-sub EvalScriptCheck {
-	my ($scriptSig, $scriptPubKey, $txTo, $nIn) = @_;
+sub CheckSig {
+	my ($scriptSig, $scriptPubKey, $txTo, $nIn, $sig, $pub) = @_;
 
-	$scriptSig =~ /(\C)\z/ or warn ("short sig"), return;
+	$scriptSig =~ /(\C)\z/ or die ("short sig");
 	my $nHashType = ord $1;
 
 	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType)
 		or return;
-	warn "hash=$X{hash}";
-	return script::Exe ($scriptSig . $scriptPubKey, $hash);
+	warn "hash=$X{$hash}";
+
+	# last byte of sig is tx type
+	$sig =~ s/\C\z// or die "empty sig";
+
+	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
+}
+
+sub EvalScriptCheck {
+	my ($scriptSig, $scriptPubKey, $txTo, $nIn) = @_;
+
+	return script::Exe ($scriptSig . $scriptPubKey, sub {
+		my ($sig, $pub) = @_;
+
+		CheckSig ($scriptSig, $scriptPubKey, $txTo, $nIn, $sig, $pub);
+	});
 }
 
 1;
