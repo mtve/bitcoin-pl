@@ -448,6 +448,7 @@ sub EvalScriptCheck {
 
 	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType)
 		or return;
+	warn "hash=$X{hash}";
 	return script::Exe ($scriptSig . $scriptPubKey, $hash);
 }
 

@@ -211,29 +211,29 @@ sub GetOp {
 sub bool { $_[0] ? chr 1 : chr 0 }
 sub true { $_[0] eq chr 1 }
 
-sub Exe {
-	my ($script, $hash) = @_;
+our (@stack, $hash); # will be localized
 
-	my @st;
-	my $pop = sub { @st ? pop @st : die "empty stack" };
-	my $push = sub { push @st, @_ };
+sub Pop() { @stack ? pop @stack : die "empty stack" }
+sub Push(@) { push @stack, @_ }
+sub Verify() { true (Pop) || die "fail" }
 
-	my %exe; %exe = (
-	OP_1NEGATE	=> sub { $push->("\x81") },
-	OP_DUP		=> sub { my $el = $pop->(); $push->($el, $el) },
-	OP_CHECKSIG	=> sub {
-		my $pub = $pop->();
-		my $sig = $pop->();
+our %Exe; %Exe = (
+	OP_1NEGATE		=> sub { Push "\x81" },
+	OP_DUP			=> sub { my $el = Pop; Push $el, $el },
+	OP_CHECKSIG		=> sub {
+		my $pub = Pop;
+		my $sig = Pop;
 		# last byte of sig is tx type
 		$sig =~ s/\C\z// or die "empty sig";
-		$push->(bool (ecdsa::Verify ({ pub => $pub }, $hash, $sig)));
+#XXX provide cb to Exe
+		Push (bool (ecdsa::Verify ({ pub => $pub }, $hash, $sig)));
 	},
-	OP_SHA256	=> sub { $push->(base58::sha256 ($pop->())) },
-	OP_HASH160	=> sub { $push->(base58::Hash160 ($pop->())) },
-	OP_EQUAL	=> sub { $push->(bool ($pop->() eq $pop->())) },
-	OP_VERIFY	=> sub { true ($pop->()) || die "invalid" },
-	OP_EQUALVERIFY	=> sub { $exe{OP_EQUAL} (); $exe{OP_VERIFY} (); },
-	OP_CHECKSIGVERIFY => sub { $exe{OP_CHECKSIG} (); $exe{OP_VERIFY} (); },
+	OP_SHA256		=> sub { Push base58::sha256 (Pop) },
+	OP_HASH160		=> sub { Push base58::Hash160 (Pop) },
+	OP_EQUAL		=> sub { Push bool (Pop eq Pop) },
+	OP_VERIFY		=> \&Verify,
+	OP_EQUALVERIFY		=> sub { $Exe{OP_EQUAL} (); Verify; },
+	OP_CHECKSIGVERIFY	=> sub { $Exe{OP_CHECKSIG} (); Verify; },
 	# OP_IF OP_NOTIF OP_ELSE OP_ENDIF
 	# stack ops
 	# OP_SIZE
@@ -241,24 +241,29 @@ sub Exe {
 	# OP_RIPEMD160 OP_SHA1 OP_HASH256
 	# OP_CODESEPARATOR?
 	# OP_CHECKMULTISIG OP_CHECKMULTISIGVERIFY
-	);
+);
 
+sub Exe {
+	my ($script, $h) = @_;
+
+	local @stack;
+	local $hash = $h;
 	while (length $script) {
 		my ($op, $par) = GetOp ($script);
-		warn "$op $X{$par} stack @X{@st}\n";
+		warn "$op $X{$par} stack @X{@stack}\n";
 		if ($op =~ /^OP_PUSHDATA/) {
-			$push->($par);
+			Push ($par);
 		} elsif ($op =~ /^OP_NOP\d+\z/) {
 			# nothing
 		} elsif ($op =~ /^OP_(\d+)\z/) {
-			$push->(chr $1);
-		} elsif (exists $exe{$op}) {
-			$exe{$op} ();
+			Push (chr $1);
+		} elsif (exists $Exe{$op}) {
+			$Exe{$op} ();
 		} else {
 			die "$op is not implemented";
 		}
 	}
-	return true ($pop->());
+	return true (Pop);
 }
 
 sub Parse {

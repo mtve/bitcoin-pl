@@ -17,7 +17,7 @@ sub rotate {
 	open $fh, '>', $file
 		or die "open $file: $!";
 	select $fh; $|++; select STDOUT;
-	$last_d = (localtime)[4];
+	$last_d = (localtime)[3];
 	$! = 0;
 	warn "log rotated at ${\scalar localtime} pid $$ perl $^V on $^O\n";
 }
