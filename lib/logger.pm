@@ -18,6 +18,7 @@ sub rotate {
 		or die "open $file: $!";
 	select $fh; $|++; select STDOUT;
 	$last_d = (localtime)[3];
+	tie *STDERR, __PACKAGE__;
 	$! = 0;
 	warn "log rotated at ${\scalar localtime} pid $$ perl $^V on $^O\n";
 }
@@ -46,7 +47,5 @@ sub trace {
 	print STDERR $msg;
 	exit 1;
 }
-
-tie *STDERR, __PACKAGE__;
 
 1;
