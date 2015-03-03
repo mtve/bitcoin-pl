@@ -3,16 +3,6 @@ package ripemd160;
 use warnings;
 use strict;
 
-sub f {
-	my ($j, $x, $y, $z) = @_;
-
-	$j <= 15 ? $x ^ $y ^$z :
-	$j <= 31 ? ($x & $y) | (~$x & $z) :
-	$j <= 47 ? ($x | ~$y) ^ $z :
-	$j <= 63 ? ($x & $z) | ($y & ~$z) :
-		   $x ^ ($y | ~$z);
-}
-
 my @K = map int 2**30 * sqrt, 0, 2, 3, 5, 7;
 my @k = map int 2**30 * $_**(1/3), 2, 3, 5, 7, 0;
 
@@ -40,16 +30,26 @@ my @s = qw(
 
 my @H = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0);
 
-sub s32 {
-	my ($s) = @_;
+sub u32 {
+	my ($n) = @_;
 
-	return $s % 2**32;
+	return $n & 0xffffffff;
 }
 
 sub rol {
 	my ($R, $N) = @_;
 
-	return s32 $N << $R | $N >> 32 - $R;
+	return u32 $N << $R | $N >> 32 - $R;
+}
+
+sub f {
+	my ($j, $x, $y, $z) = @_;
+
+	u32	$j <= 15 ? $x ^ $y ^$z :
+		$j <= 31 ? ($x & $y) | (~$x & $z) :
+		$j <= 47 ? ($x | ~$y) ^ $z :
+		$j <= 63 ? ($x & $z) | ($y & ~$z) :
+			   $x ^ ($y | ~$z);
 }
 
 sub hash {
@@ -64,21 +64,21 @@ sub hash {
 		my ($a, $b, $c, $d, $e) = @h;
 		my $T;
 		for my $j (0 .. 79) {
-			$T = s32 rol ($S[$j], s32 $A +
+			$T = u32 rol ($S[$j], u32 $A +
 				f ($j, $B, $C, $D) +
 				$X[$R[$j]] + $K[$j/16]) + $E;
 			$A = $E; $E = $D; $D = rol (10, $C); $C = $B; $B = $T;
 
-			$T = s32 rol ($s[$j], s32 $a +
+			$T = u32 rol ($s[$j], u32 $a +
 				f (79 - $j, $b, $c, $d) +
 				$X[$r[$j]] + $k[$j/16]) + $e;
 			$a = $e; $e = $d; $d = rol (10, $c); $c = $b; $b = $T;
 		}
-		$T    = s32 $h[1] + $C + $d;
-		$h[1] = s32 $h[2] + $D + $e;
-		$h[2] = s32 $h[3] + $E + $a;
-		$h[3] = s32 $h[4] + $A + $b;
-		$h[4] = s32 $h[0] + $B + $c;
+		$T    = u32 $h[1] + $C + $d;
+		$h[1] = u32 $h[2] + $D + $e;
+		$h[2] = u32 $h[3] + $E + $a;
+		$h[3] = u32 $h[4] + $A + $b;
+		$h[4] = u32 $h[0] + $B + $c;
 		$h[0] = $T;
 	!eg;
 	return pack 'V5', @h;
