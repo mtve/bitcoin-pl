@@ -1,0 +1,45 @@
+#! /usr/bin/perl
+
+use warnings;
+use strict;
+use lib '../lib';
+
+use serialize;
+use main;
+use util;
+
+my $ser = pack 'H*', '0100000001944badc33f9a723eb1c85dde24374e6dee9259ef4cfa6a10b2fd05b6e55be400000000008c4930460221009f8aef83489d5c3524b68ddf77e8af8ceb5cba89790d31d2d2db0c80b9cbfd26022100bb2c13e15bb356a4accdd55288e8b2fd39e204a93d849ccf749eaef9d8162787014104f9804cfb86fb17441a6562b07c4ee8f012bdb2da5be022032e4b87100350ccc7c0f4d47078b06c9d22b0ec10bdce4c590e0d01aed618987a6caa8c94d74ee6dcffffffff0100f2052a010000001976a9146934efcef36903b5b45ebd1e5f862d1b63a99fa588ac00000000';
+
+my $uns = serialize::Unserialize ('CTransaction', $ser, 1);
+#print serialize::Dump ('CTransaction', $uns);
+
+my $q = pack'H*','76a9146934efcef36903b5b45ebd1e5f862d1b63a99fa588ac';
+
+my $h = main::SignatureHash ($q, $uns, 0, 1);
+
+print $Xr{$h};
+print "\n";
+print '36b6bec34fa843c2f42aec472d4e603399c5e639085b79796f2d3a8a56017bad';
+
+=cut
+17:34:13
+   main::TransactionIncome
+   74c1a6dd6e88f73035143f8fc7420b5c395d28300a70bb35b943f7f2eddc656d:0
+   <-
+   00e45be5b605fdb2106afa4cef5992ee6d4e3724de5dc8b13e729a3fc3ad4b94:0
+   4930460221009f8aef83489d5c3524b68ddf77e8af8ceb5cba89790d31d2d2db0c80b9cbfd26022100bb2c13e15bb356a4accdd55288e8b2fd39e204a93d849ccf749eaef9d8162787014104f9804cfb86fb17441a6562b07c4ee8f012bdb2da5be022032e4b87100350ccc7c0f4d47078b06c9d22b0ec10bdce4c590e0d01aed618987a6caa8c94d74ee6dc
+   <=
+   76a9146934efcef36903b5b45ebd1e5f862d1b63a99fa588ac
+17:34:13
+   script::Exe
+   OP_CHECKSIG
+   stack
+   01872716d8f9ae9e74cf9c843da904e239fdb2e88852d5cdaca456b35be1132cbb00210226fdcbb9800cdbd2d2310d7989ba5ceb8cafe877df8db624355c9d4883ef8a9f0021024630
+   dce64ed7948caa6c7a9818d6ae010d0e594ccebd10ecb0229d6cb07870d4f4c0c7cc500310874b2e0322e05bdab2bd12f0e84e7cb062651a4417fb86fb4c80f904
+17:34:13
+   main::CheckSig
+   hash=a8fdecfe4d0c4893e631b2dd56786bfa3dbd124d2a038f19979a0f9ad5894d7f
+   at
+   lib/main.pm
+   line
+   451.

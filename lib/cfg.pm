@@ -6,7 +6,7 @@ use strict;
 my $NAME = 'bitcoin-pl.conf';
 
 our %C = (
-	CHAIN			=> 'regtest',
+	CHAIN			=> 'main',
 
 	LOG_FILE_NAME		=> 'var/log',
 	LOG_FILES		=> 9,

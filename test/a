@@ -1,0 +1,16 @@
+#! /usr/bin/perl
+
+use warnings;
+use strict;
+use lib '../lib';
+
+use script;
+use base58;
+
+my $sig =  reverse pack'H*','01f2c08af2f8f874eda27a70dc8f1f89e84ab1a149c2677d68a16a806e69f3ee282002287c926d0a54d5f9719a0b691df266619f6b550ff15b36b19d5951dd4a8f2b6420024430';
+my $pub =  reverse pack'H*','8ac5127e35cea026d408e2613ba7af15b8575e0dccabfa3d66d71cff95c96fe171e0cf44f7bd2e9b5f065784700c596c69994d8615dcdf7fe4f949dd759edcdf04';
+my $hash =         pack'H*','d104ef8831d976c5fc425ebe6910fc31e00a4db10cb6ef2424e78b8403d2cc62';
+
+$sig =~ s/\C\z//;
+
+print ecdsa::Verify ({ pub => $pub }, $hash, $sig) + 0;

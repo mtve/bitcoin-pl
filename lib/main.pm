@@ -443,15 +443,13 @@ sub SignatureHash {
 sub CheckSig {
 	my ($scriptSig, $scriptPubKey, $txTo, $nIn, $sig, $pub) = @_;
 
-	$scriptSig =~ /(\C)\z/ or die ("short sig");
+	# last byte of sig is tx type
+	$sig =~ s/(\C)\z// or die "empty sig";
 	my $nHashType = ord $1;
 
 	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType)
 		or return;
 	warn "hash=$X{$hash}";
-
-	# last byte of sig is tx type
-	$sig =~ s/\C\z// or die "empty sig";
 
 	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
 }

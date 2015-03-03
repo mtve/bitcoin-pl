@@ -16,8 +16,8 @@ use cfg;
 our $VERSION = '140219';
 
 print "welcome to bitcoin perl v$VERSION\n";
-cfg::load ();
 logger::rotate ();
+cfg::load ();
 data::init ();
 main::init ();
 web::init ();

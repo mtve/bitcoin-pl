@@ -247,7 +247,7 @@ sub Exe {
 	local $checksig_cb = $cb;
 	while (length $script) {
 		my ($op, $par) = GetOp ($script);
-		warn "$op $X{$par} stack @X{@stack}\n";
+		warn "debug $op $Xr{$par} stack @Xr{@stack}\n";
 		if ($op =~ /^OP_PUSHDATA/) {
 			Push $par;
 		} elsif ($op =~ /^OP_NOP\d+\z/) {
@@ -270,9 +270,7 @@ sub Parse {
 	while ($script ne '') {
 		my $pc = $len - length $script;
 		my ($op, $par) = GetOp ($script);
-		print "$pc: $op",
-			defined $par ? ' 0x' . unpack 'H*', $par : '',
-			"\n";
+		print "$pc: $op $Xr{$par}\n";
 	}
 }
 

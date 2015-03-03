@@ -89,7 +89,7 @@ sub state_msg {
 
 	D && warn "debug msg " . unpack ('H*', $msg);
 	my $str = serialize::Unserialize ($file->{net_func}, $msg);
-	D && warn "debug $file->{net_func} " .
+	0 && warn "debug $file->{net_func} " .
 		serialize::Dump ($file->{net_func}, $str);
 
 	no strict 'refs';
