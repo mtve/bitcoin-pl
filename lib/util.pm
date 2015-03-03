@@ -1,6 +1,6 @@
 package util;
 
-# autoexport %X
+# autoexport %X and %Xr
 
 use warnings;
 use strict;
