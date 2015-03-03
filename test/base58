@@ -32,5 +32,5 @@ $c = base58::Hash160ToAddress ($b);
 $a eq $c or die $c;
 print "ok\n";
 
-my $x = reverse $util::h2b{'04678afd04678a'};
-print "$X{$x} $X{reverse base58::sha256 ($x)}\n";
+#my $x = reverse $util::h2b{'04678afd04678a'};
+#print "$X{$x} $X{reverse base58::sha256 ($x)}\n";

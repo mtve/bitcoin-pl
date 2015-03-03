@@ -38,7 +38,7 @@ for (qw(
 	script::Parse (pack 'H*', $_);
 	print "ok\n";
 }
-exit;
+#exit;
 
 my $s = '';
 $s .= pack 'H*', '4730440220540833d4a157acb12beb97a8565464c6cd61ffcf643ed78429e8e820077e348d02207474bf87f5cb6219e6d52f72bc8ee9d548a166dd1a2039d62617d96550fdf87c01';
