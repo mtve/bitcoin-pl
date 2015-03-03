@@ -162,9 +162,9 @@ sub Int {
 
 	return	$i == -1 ?
 			chr $OP{OP_1NEGATE} :
-		$i < 0 ?
+		$i <= 0 ?
 			die "$i" :
-		$i >= 0 && $i <= 16 ?
+		$i >= 1 && $i <= 16 ?
 			chr $OP{"OP_$i"} :
 		Bin (pack
 			$i < 2**8 ? 'C' :
@@ -253,7 +253,7 @@ sub Exe {
 		} elsif ($op =~ /^OP_NOP\d+\z/) {
 			# nothing
 		} elsif ($op =~ /^OP_(\d+)\z/) {
-			Push chr $1;
+			Push ($1 ? chr $1 : '');
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
 		} else {

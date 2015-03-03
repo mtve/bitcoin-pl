@@ -21,11 +21,13 @@ delete broken block to reload and reapply it again:
 links:
  https://en.bitcoin.it/wiki/Protocol_specification
  https://github.com/bitcoin/bips
+ https://bitcoin.org/en/developer-examples#p2sh-multisig
 
 todo:
 - bip11 multisig
 - bip34 block.nVersion=2 coinbase starts with serialized block height
 - bip66 dersig rules, for block.nVersion=3
+- transaction malleability checks
 - other bips
 - web password
 - web acl
