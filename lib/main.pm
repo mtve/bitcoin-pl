@@ -457,6 +457,7 @@ sub CheckSig {
 sub EvalScriptCheck {
 	my ($scriptSig, $scriptPubKey, $txTo, $nIn) = @_;
 
+	# XXX PK/PKH/SH/MS/NULL/NONSTD
 	return script::Exe ($scriptSig . $scriptPubKey, sub {
 		my ($sig, $pub) = @_;
 
