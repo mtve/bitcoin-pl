@@ -193,7 +193,7 @@ sub init {
 
 	if ($dbh->{Driver}->{Name} =~ /sqlite/i) {
 		$dbh->do ('PRAGMA synchronous = OFF');
-		$dbh->do ('PRAGMA cache_size = 200000');
+		$dbh->do ('PRAGMA cache_size = 20000');
 	}
 
 	while ($SCRIPT =~ /([^;]+)/g) {

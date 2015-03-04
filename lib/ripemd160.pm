@@ -33,7 +33,7 @@ my @H = (0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0);
 sub u32 {
 	my ($n) = @_;
 
-	return $n & 0xffffffff;
+	return $n % 2**32;
 }
 
 sub rol {

@@ -12,8 +12,7 @@ Features:
 
 "Do what you want" license.
 
-Work in progress on multisig
- eb3b82c0884e3efa6d8b0be55b4915eb20be124c9766245bcc7f34fdac32bccb
+Work in progress on multisig.
 
 delete broken block to reload and reapply it again:
  delete from blk where hash=(select hash from blk where nheight=-1 order by ntime asc)
