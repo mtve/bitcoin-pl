@@ -25,7 +25,7 @@ for (keys %vec) {
 	print "ok\n";
 }
 
-$a = '1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2';		# for donations :)
+$a = '1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2';
 $b = base58::AddressToHash160 ($a);
 $c = base58::Hash160ToAddress ($b);
 

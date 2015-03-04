@@ -143,8 +143,6 @@ sub got_version {
 		if $ver->{nVersion} < $VERSION;
 	die "equal nonce"
 		if $ver->{nLocalHostNonce} eq $file->{nLocalHostNonce};
-
-	# PushMessage ($file, 'getaddr');
 }
 
 sub send_ping {

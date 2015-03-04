@@ -224,17 +224,6 @@ sub GetKeyHash {
 		script::GetBitcoinAddressHash160 ($scriptPubKey);
 }
 
-sub IsMine {
-	my ($scriptPubKey) = @_;
-
-	my $key = script::GetPubKey ($scriptPubKey);
-	my $key_h = $key ? base58::Hash160 ($key) :
-		script::GetBitcoinAddressHash160 ($scriptPubKey) || return;
-	my $k = data::key_load ($key_h);
-	return if !$k;
-	return ($key ? 'OP_PUBKEY' : 'OP_PUBKEYHASH', $k);
-}
-
 #
 # block
 #

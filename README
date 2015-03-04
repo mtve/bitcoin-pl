@@ -28,7 +28,6 @@ todo:
 - bip66 dersig rules, for block.nVersion=3
 - transaction malleability checks
 - other bips
-- web password
 - web acl
 - web blockexplorer like browse
 - money transfer

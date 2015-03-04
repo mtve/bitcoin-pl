@@ -119,6 +119,10 @@ sub sha256_ {
 	return pack 'N*', @h;
 }
 
+sha256_ ('') eq pack 'H*',
+	'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+		or die "sha256 broken";
+
 eval { require Digest::SHA };
 *sha256 = $@ ? \&sha256_ : \&Digest::SHA::sha256;
 

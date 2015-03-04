@@ -84,4 +84,7 @@ sub hash {
 	return pack 'V5', @h;
 }
 
+hash ('') eq pack 'H*', '9c1185a5c5e9fc54612808977ee8f548b2258d31'
+	or die "broken";
+
 1;

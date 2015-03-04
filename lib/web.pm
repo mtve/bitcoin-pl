@@ -82,7 +82,6 @@ sub page_about {
 with ${\data::version }, and ${\ecdsa::version }</p>
 <p>Project home is at <a href="$home">$home</a></p>
 <p><b>$main::CONFIRMATIONS</b> blocks in main chain to confirm transaction.</p>
-<p>Address for donations is <b>1ADcnp7G3y7VQE1CkfveKMP6sGxGzFjwU2</b></p>
 </p>
 HTML
 }
@@ -187,12 +186,6 @@ sub page_stop {
 	event::quit ();
 }
 
-sub check_sid {			# prevent xss
-	my ($file) = @_;
-
-	return $sid eq ($file->{http_param}{sid} || '');
-}
-
 my %scale = (
 	1			=> 's',
 	60			=> 'm',
@@ -220,34 +213,71 @@ sub ago {
 	return $s;
 }
 
+sub page_login {
+	my ($file) = @_;
+
+	die "login"
+		if ($file->{http_param}{pass} || '') eq $cfg::var{WEB_PASS};
+
+	return <<HTML;
+<form action="/login" method="get">
+<p>Enter password:
+<input type="password" name="pass" value="">
+<input type="submit" value="Login">
+</p>
+</form>
+HTML
+}
+
+sub page_error { '<p><font color="#FF0000">Bad link</font></p>' }
+
+sub page_die { die "wtf" }
+
+sub page_ {
+	my ($file) = @_;
+
+	return <<HTML;
+<p>Blocks in $cfg::var{CHAIN} chain: <b>$main::blk_best->{nHeight}</b>,
+last block is <b>@{[ ago ($main::blk_best->{nTime}) ]}</b> ago,
+your addresses: <b>${\data::key_cnt () }</b></p>
+HTML
+}
+
+sub check_sid {			# prevent xss
+	my ($file) = @_;
+
+	return $sid eq ($file->{http_param}{sid} || '');
+}
+
 sub page {
 	my ($file) = @_;
 
-	my $page = '';
-	if ($file->{http_url} =~ /(\w+)(\?|\z)(.*)/) {
-		my $mvc = "page_$1";
-		no strict 'refs';
-		$file->{http_param} = http_params ($3);
-		$page = $mvc->($file) if exists &$mvc && check_sid ($file);
-	}
+	my ($page, $params) = $file->{http_url} =~ /(\w*)(?:\?|\z)(.*)/;
+	$file->{http_param} = http_params ($params);
+	no strict 'refs';
+	my $mvc = "page_$page";
+	$mvc = "page_login" if !check_sid ($file);
+	$mvc = "page_error" if !exists &$mvc;
+	my $html = $mvc->($file);
 
+	my $nav = check_sid ($file) ? <<HTML : '';
+<p>
+<a href="/?sid=$sid">Main</a> |
+<a href="/key?sid=$sid">Wallet</a> |
+<a href="/rotate?sid=$sid">Rotate log</a> |
+<a href="/stop?sid=$sid">Stop</a> |
+<a href="/sql?sid=$sid">SQL query</a> |
+<a href="/about?sid=$sid">About</a> |
+<a href="/">Logout</a>
+</p>
+HTML
 	return <<HTML;
 <html><head>
 <title>Bitcoin in perl</title>
 </head><body>
 <h3><a href="http://www.bitcoin.org">Bitcoin</a> in perl</h3>
-<p>Blocks in $cfg::var{CHAIN} chain: <b>$main::blk_best->{nHeight}</b>,
-last block is <b>@{[ ago ($main::blk_best->{nTime}) ]}</b> ago,
-your addresses: <b>${\data::key_cnt () }</b></p>
-<p>
-<a href="/">Main</a> |
-<a href="/key?sid=$sid">Wallet</a> |
-<a href="/rotate?sid=$sid">Rotate log</a> |
-<a href="/stop?sid=$sid">Stop</a> |
-<a href="/sql?sid=$sid">SQL query</a> |
-<a href="/about?sid=$sid">About</a>
-</p>
-$page
+$nav
+$html
 <p>Page generated at ${\scalar localtime}.</p>
 </body></html>
 HTML
@@ -270,20 +300,39 @@ $ico_gz
 HTTP
 }
 
+my $cache = '
+Cache-control: no-cache, must-revalidate
+Expires: Sat, 14 Nov 2008 18:00:00 GMT
+Pragma: no-cache';
+
 sub request {
 	my ($file) = @_;
 
 	return favicon () if $file->{http_url} =~ /favicon.ico\z/;
 
-	my $html = page ($file);
+	my $html = eval { page ($file); };
 
-	return <<HTTP;
-HTTP/1.1 200 OK
+	if (!$@) {
+		return <<HTTP;
+HTTP/1.1 200 OK$cache
 Content-Type: text/html; charset=utf-8
 Content-Length: ${\length $html }
 
 $html
 HTTP
+	} elsif ($@ =~ /^login/) {
+		return <<HTTP;
+HTTP/1.0 303 See Other$cache
+Location: /?sid=$sid
+
+HTTP
+	} else {
+		return <<HTTP;
+HTTP/1.0 500 Internal Server Error
+
+$@
+HTTP
+	}
 }
 
 sub http_incoming {
