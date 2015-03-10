@@ -216,10 +216,10 @@ our (@stack, $checksig_cb); # will be localized
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
 sub Verify() { true (Pop) || die "fail" }
+sub PopN($) { map Pop, 1..$_[0] }
 
 our %Exe; %Exe = (
 	OP_1NEGATE		=> sub { Push "\x81" },
-	OP_DUP			=> sub { my $el = Pop; Push $el, $el },
 	OP_SHA256		=> sub { Push base58::sha256 (Pop) },
 	OP_HASH160		=> sub { Push base58::Hash160 (Pop) },
 	OP_EQUAL		=> sub { Push bool (Pop eq Pop) },
@@ -231,8 +231,28 @@ our %Exe; %Exe = (
 		my $sig = Pop;
 		Push bool ($checksig_cb->($sig, $pub));
 	},
+
+	#OP_TOALTSTACK
+	#OP_FROMALTSTACK
+	#OP_IFDUP
+	#OP_DEPTH
+	OP_DROP		=> sub { Pop },
+	OP_DUP		=> sub { my $x = Pop; Push $x, $x },
+	OP_NIP		=> sub { my $x = Pop; Pop; Push $x },
+	OP_OVER		=> sub { my ($y, $x) = PopN (2); Push $x, $y, $x },
+	#OP_PICK
+	#OP_ROLL
+	OP_ROT		=> sub { my ($z, $y, $x) = PopN (3); Push $y, $z, $x },
+	OP_SWAP		=> sub { my ($y, $x) = PopN (2); Push $y, $x },
+	OP_TUCK		=> sub { my ($y, $x) = PopN (2); Push $y, $x, $y },
+	OP_2DROP	=> sub { PopN (2) },
+	OP_2DUP		=> sub { my ($y, $x) = PopN (2); Push $x, $y, $x, $y },
+	#OP_3DUP
+	#OP_2OVER
+	#OP_2ROT
+	#OP_2SWAP
+
 	# OP_IF OP_NOTIF OP_ELSE OP_ENDIF
-	# stack ops
 	# OP_SIZE
 	# arithmetic
 	# OP_RIPEMD160 OP_SHA1 OP_HASH256

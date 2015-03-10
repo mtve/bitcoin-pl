@@ -192,6 +192,7 @@ sub init {
 	});
 
 	if ($dbh->{Driver}->{Name} =~ /sqlite/i) {
+		warn "sqlite specials";
 		$dbh->do ('PRAGMA synchronous = OFF');
 		$dbh->do ('PRAGMA cache_size = 20000');
 	}
