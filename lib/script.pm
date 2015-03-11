@@ -270,7 +270,7 @@ sub Exe {
 		warn "debug $op $Xr{$par} stack @Xr{@stack}\n";
 		if ($op =~ /^OP_PUSHDATA/) {
 			Push $par;
-		} elsif ($op =~ /^OP_NOP\d+\z/) {
+		} elsif ($op =~ /^OP_NOP\d*\z/) {
 			# nothing
 		} elsif ($op =~ /^OP_(\d+)\z/) {
 			Push ($1 ? chr $1 : '');
