@@ -156,6 +156,8 @@ our %OP = (
 );
 
 our %ROP = reverse %OP;
+$ROP{0} = 'OP_0'; # not OP_FALSE
+$ROP{1} = 'OP_1'; # not OP_TRUE
 
 sub Int {
 	my ($i) = @_;
