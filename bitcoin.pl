@@ -23,8 +23,8 @@ main::init ();
 web::init ();
 net::init ();
 event::loop ();
-END {
-	print "committing data\n";
-	data::commit ();
-	print "goodbye\n";
-}
+#END {
+#	print "committing data\n";
+#	data::commit ();
+#	print "goodbye\n";
+#}
