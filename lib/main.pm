@@ -430,7 +430,7 @@ sub SignatureHash {
 }
 
 sub CheckSig {
-	my ($scriptSig, $scriptPubKey, $txTo, $nIn, $sig, $pub) = @_;
+	my ($scriptPubKey, $txTo, $nIn, $sig, $pub) = @_;
 
 	# last byte of sig is tx type
 	$sig =~ s/(\C)\z// or die "empty sig";
@@ -448,10 +448,10 @@ sub EvalScriptCheck {
 
 	# XXX PK/PKH/SH/MS/NULL/NONSTD
 	return script::Exe ($scriptSig . $scriptPubKey, sub {
-		my ($sig, $pub) = @_;
+		my ($sig, $pub, $code) = @_;
 
-		CheckSig ($scriptSig, $scriptPubKey, $txTo, $nIn, $sig, $pub);
-	});
+		CheckSig ($code, $txTo, $nIn, $sig, $pub);
+	}, $scriptPubKey);
 }
 
 1;

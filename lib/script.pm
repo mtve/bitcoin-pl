@@ -213,7 +213,7 @@ sub GetOp {
 sub bool { $_[0] ? chr 1 : chr 0 }
 sub true { $_[0] eq chr 1 }
 
-our (@stack, $checksig_cb); # will be localized
+our @stack; # will be localized
 
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
@@ -227,12 +227,6 @@ our %Exe; %Exe = (
 	OP_EQUAL		=> sub { Push bool (Pop eq Pop) },
 	OP_VERIFY		=> \&Verify,
 	OP_EQUALVERIFY		=> sub { $Exe{OP_EQUAL} (); Verify; },
-	OP_CHECKSIGVERIFY	=> sub { $Exe{OP_CHECKSIG} (); Verify; },
-	OP_CHECKSIG		=> sub {
-		my $pub = Pop;
-		my $sig = Pop;
-		Push bool ($checksig_cb->($sig, $pub));
-	},
 
 	#OP_TOALTSTACK
 	#OP_FROMALTSTACK
@@ -258,15 +252,13 @@ our %Exe; %Exe = (
 	# OP_SIZE
 	# arithmetic
 	# OP_RIPEMD160 OP_SHA1 OP_HASH256
-	# OP_CODESEPARATOR?
 	# OP_CHECKMULTISIG OP_CHECKMULTISIGVERIFY
 );
 
 sub Exe {
-	my ($script, $cb) = @_;
+	my ($script, $checksig_cb, $checksig_code) = @_;
 
 	local @stack;
-	local $checksig_cb = $cb;
 	while (length $script) {
 		my ($op, $par) = GetOp ($script);
 		warn "debug $op $Xr{$par} stack @Xr{@stack}\n";
@@ -276,6 +268,13 @@ sub Exe {
 			# nothing
 		} elsif ($op =~ /^OP_(\d+)\z/) {
 			Push ($1 ? chr $1 : '');
+		} elsif ($op =~ /^OP_CHECKSIG(VERIFY)?\z/) {
+			my $pub = Pop;
+			my $sig = Pop;
+			Push bool ($checksig_cb->($sig, $pub, $checksig_code));
+			Verify if $1;
+		} elsif ($op eq 'OP_CODESEPARATOR') {
+			$checksig_code = $script;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
 		} else {
