@@ -436,7 +436,7 @@ sub CheckSig {
 
 	my $hash = SignatureHash ($scriptCode, $txTo, $nIn, $nHashType)
 		or return;
-	warn "hash=$X{$hash}";
+	warn "hash=$X{$hash} sig=$Xr{$sig} pub=$Xr{$pub}";
 
 	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
 }
