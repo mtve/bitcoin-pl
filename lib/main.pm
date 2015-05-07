@@ -415,13 +415,9 @@ sub SignatureHash {
 
 	$nIn < @{ $txTo->{vin} } or die "assert";
 
-	my $txTmp = {
-		nVersion	=> $txTo->{nVersion},
-		nLockTime	=> $txTo->{nLockTime},
-		vin		=> [ map +{ %$_ }, @{ $txTo->{vin} } ],
-		vout		=> [ map +{ %$_ }, @{ $txTo->{vout} } ],
-	};
-	$_->{scriptSig} = '' for @{ $txTmp->{vin} };
+	my $txTmp = { %$txTo, vin => [
+		map +{ %$_, scriptSig => '' }, @{ $txTo->{vin} }
+	] };
 	$txTmp->{vin}[$nIn]{scriptSig} = $scriptCode;
 
 	my $ss = serialize::Serialize ('CTransaction', $txTmp) . 
@@ -430,13 +426,13 @@ sub SignatureHash {
 }
 
 sub CheckSig {
-	my ($scriptPubKey, $txTo, $nIn, $sig, $pub) = @_;
+	my ($scriptCode, $txTo, $nIn, $sig, $pub) = @_;
 
 	# last byte of sig is tx type
 	$sig =~ s/(\C)\z// or die "empty sig";
 	my $nHashType = ord $1;
 
-	my $hash = SignatureHash ($scriptPubKey, $txTo, $nIn, $nHashType)
+	my $hash = SignatureHash ($scriptCode, $txTo, $nIn, $nHashType)
 		or return;
 	warn "hash=$X{$hash}";
 

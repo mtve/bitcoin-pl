@@ -216,11 +216,11 @@ sub True { $_[0] eq chr 1 }
 sub NumDecode {
 	my ($bin) = @_;
 
-	die "num $util::b2hr{$bin} is too long\n" if length $bin > 4;
+	die "num $Xr{$bin} is too long\n" if length $bin > 4;
 	# total mess
 	if ($bin =~ /[\x00\x80]\z/ &&
             $bin !~ /[\x80-\xff][\x00\x80]\z/) {
-		die "not minimal encoding of num $util::b2hr{$bin}\n";
+		die "not minimal encoding of num $Xr{$bin}\n";
 	}
 	my $neg = $bin =~ s/([\x80-\xff])\z/ $1 & "\x7f" /e;
 	my $num = unpack 'V', $bin | "\x00"x4;
@@ -262,11 +262,10 @@ our %Exe; %Exe = (
 	#OP_2ROT
 	#OP_2SWAP
 
-	# OP_IF OP_NOTIF OP_ELSE OP_ENDIF
-	# OP_SIZE
-	# arithmetic
-	# OP_RIPEMD160 OP_SHA1 OP_HASH256
-	# OP_CHECKMULTISIG OP_CHECKMULTISIGVERIFY
+	#OP_IF OP_NOTIF OP_ELSE OP_ENDIF
+	#OP_SIZE
+	#arithmetic
+	#OP_RIPEMD160 OP_SHA1 OP_HASH256
 );
 
 sub multisig {

@@ -1,7 +1,13 @@
-BitCoin implemented in perl, meant to be portable.
+Bitcoin implemented in perl, meant to be portable.
+
+Status:
+ Work in progress on multisig, stop at block 163685 (2012-01-24)
 
 Usage:
-    perl bitcoin.pl
+ perl bitcoin.pl
+
+For speed it's recommended to place db file on memory filesystem like this:
+ mount -t tmpfs -o size=10g tmpfs `pwd`/var
 
 Features:
 - web interface
@@ -11,11 +17,6 @@ Features:
 - key management with confirmed amount and unconfirmed delta
 
 "Do what you want" license.
-
-Work in progress on multisig.
-
-delete broken block to reload and reapply it again:
- delete from blk where hash=(select hash from blk where nheight=-1 order by ntime asc)
 
 links:
  https://en.bitcoin.it/wiki/Protocol_specification

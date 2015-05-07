@@ -13,7 +13,7 @@ use net;
 use event;
 use cfg;
 
-our $VERSION = '140219';
+our $VERSION = '150507';
 
 print "welcome to bitcoin perl v$VERSION\n";
 logger::rotate ();
@@ -23,8 +23,4 @@ main::init ();
 web::init ();
 net::init ();
 event::loop ();
-#END {
-#	print "committing data\n";
-#	data::commit ();
-#	print "goodbye\n";
-#}
+END { print "goodbye\n"; }
