@@ -14,7 +14,7 @@ our %C = (
 	DB_DS			=> 'dbi:SQLite:dbname=var/db',
 	DB_USER			=> '',
 	DB_PASS			=> '',
-	DB_COMMIT_PERIOD	=> 10 * 60,
+	DB_COMMIT_PERIOD	=> 1 * 60,
 
 	WEB_PORT		=> 8899,
 	WEB_PASS		=> 'changeme',

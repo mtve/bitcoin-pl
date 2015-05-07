@@ -255,6 +255,22 @@ our %Exe; %Exe = (
 	# OP_CHECKMULTISIG OP_CHECKMULTISIGVERIFY
 );
 
+sub multisig {
+	my ($checksig_cb, $checksig_code) = @_;
+
+	my @pub = PopN (Pop) or die "no pubkeys";
+	my @sig = PopN (Pop) or die "no sigs";
+
+	while (@sig) {
+		if ($checksig_cb->($sig[0], $pub[0], $checksig_code)) {
+			shift @sig;
+		}
+		shift @pub;
+		return 0 if @sig > @pub;
+	}
+	return 1;
+}
+
 sub Exe {
 	my ($script, $checksig_cb, $checksig_code) = @_;
 
@@ -273,8 +289,12 @@ sub Exe {
 			my $sig = Pop;
 			Push bool ($checksig_cb->($sig, $pub, $checksig_code));
 			Verify if $1;
+		} elsif ($op =~ /^OP_CHECKMULTISIG(VERIFY)?\z/) {
+			Push bool (multisig ($checksig_cb, $checksig_code));
+			Verify if $1;
 		} elsif ($op eq 'OP_CODESEPARATOR') {
 			$checksig_code = $script;
+$ecdsa::PROB_VERIFY = 1;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
 		} else {
