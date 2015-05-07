@@ -210,21 +210,35 @@ sub GetOp {
 	return wantarray ? ($op, $par) : $op;
 }
 
-sub bool { $_[0] ? chr 1 : chr 0 }
-sub true { $_[0] eq chr 1 }
+sub Bool { $_[0] ? chr 1 : chr 0 }
+sub True { $_[0] eq chr 1 }
+
+sub NumDecode {
+	my ($bin) = @_;
+
+	die "num $util::b2hr{$bin} is too long\n" if length $bin > 4;
+	# total mess
+	if ($bin =~ /[\x00\x80]\z/ &&
+            $bin !~ /[\x80-\xff][\x00\x80]\z/) {
+		die "not minimal encoding of num $util::b2hr{$bin}\n";
+	}
+	my $neg = $bin =~ s/([\x80-\xff])\z/ $1 & "\x7f" /e;
+	my $num = unpack 'V', $bin | "\x00"x4;
+	return $neg ? -$num : $num;
+}
 
 our @stack; # will be localized
 
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
-sub Verify() { true (Pop) || die "fail" }
+sub Verify() { True (Pop) || die "fail" }
 sub PopN($) { map Pop, 1..$_[0] }
 
 our %Exe; %Exe = (
 	OP_1NEGATE		=> sub { Push "\x81" },
 	OP_SHA256		=> sub { Push base58::sha256 (Pop) },
 	OP_HASH160		=> sub { Push base58::Hash160 (Pop) },
-	OP_EQUAL		=> sub { Push bool (Pop eq Pop) },
+	OP_EQUAL		=> sub { Push Bool (Pop eq Pop) },
 	OP_VERIFY		=> \&Verify,
 	OP_EQUALVERIFY		=> sub { $Exe{OP_EQUAL} (); Verify; },
 
@@ -258,8 +272,8 @@ our %Exe; %Exe = (
 sub multisig {
 	my ($checksig_cb, $checksig_code) = @_;
 
-	my @pub = PopN (Pop) or die "no pubkeys";
-	my @sig = PopN (Pop) or die "no sigs";
+	my @pub = PopN (NumDecode (Pop)) or die "no pubkeys";
+	my @sig = PopN (NumDecode (Pop)) or die "no sigs";
 
 	while (@sig) {
 		if ($checksig_cb->($sig[0], $pub[0], $checksig_code)) {
@@ -287,10 +301,10 @@ sub Exe {
 		} elsif ($op =~ /^OP_CHECKSIG(VERIFY)?\z/) {
 			my $pub = Pop;
 			my $sig = Pop;
-			Push bool ($checksig_cb->($sig, $pub, $checksig_code));
+			Push Bool ($checksig_cb->($sig, $pub, $checksig_code));
 			Verify if $1;
 		} elsif ($op =~ /^OP_CHECKMULTISIG(VERIFY)?\z/) {
-			Push bool (multisig ($checksig_cb, $checksig_code));
+			Push Bool (multisig ($checksig_cb, $checksig_code));
 			Verify if $1;
 		} elsif ($op eq 'OP_CODESEPARATOR') {
 			$checksig_code = $script;
@@ -301,7 +315,7 @@ $ecdsa::PROB_VERIFY = 1;
 			die "$op is not implemented";
 		}
 	}
-	return true (Pop);
+	return True (Pop);
 }
 
 sub Parse {
