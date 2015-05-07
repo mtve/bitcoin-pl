@@ -225,7 +225,7 @@ sub FindAndDel {
 
 	my $res = '';
 	while ($script) {
-		$script =~ s/^\Q($del)+//;
+		$script =~ s/^(\Q$del\E)+//;
 		$res .= PutOp (GetOp ($script));
 	}
 	return $res;
