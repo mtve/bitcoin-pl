@@ -210,6 +210,27 @@ sub GetOp {
 	return wantarray ? ($op, $par) : $op;
 }
 
+sub PutOp {
+	my ($op, $par) = @_;
+
+	$op eq 'OP_PUSHDATA' ? pack 'C/a', $par :
+	Op ($op) . (
+		$op eq 'OP_PUSHDATA1' ? pack 'C/a', $par :
+		$op eq 'OP_PUSHDATA2' ? pack 'v/a', $par :
+		$op eq 'OP_PUSHDATA4' ? pack 'V/a', $par : '' );
+}
+
+sub FindAndDel {
+	my ($script, $del) = @_;
+
+	my $res = '';
+	while ($script) {
+		$script =~ s/^\Q($del)+//;
+		$res .= PutOp (GetOp ($script));
+	}
+	return $res;
+}
+
 sub Bool { $_[0] ? chr 1 : chr 0 }
 sub True { $_[0] eq chr 1 }
 

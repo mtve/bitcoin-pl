@@ -428,6 +428,8 @@ sub SignatureHash {
 sub CheckSig {
 	my ($scriptCode, $txTo, $nIn, $sig, $pub) = @_;
 
+	$scriptCode = script::FindAndDel ($scriptCode, script::Bin ($sig));
+
 	# last byte of sig is tx type
 	$sig =~ s/(\C)\z// or die "empty sig";
 	my $nHashType = ord $1;
