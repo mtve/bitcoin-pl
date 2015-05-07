@@ -223,9 +223,11 @@ sub PutOp {
 sub FindAndDel {
 	my ($script, $del) = @_;
 
+	warn "debug script $Xr{$script} del $Xr{$del}\n";
 	my $res = '';
-	while ($script) {
+	while (1) {
 		$script =~ s/^(\Q$del\E)+//;
+		last if !$script;
 		$res .= PutOp (GetOp ($script));
 	}
 	return $res;
