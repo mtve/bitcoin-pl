@@ -20,13 +20,14 @@ sub rotate {
 	$last_d = (localtime)[3];
 	tie *STDERR, __PACKAGE__;
 	$! = 0;
-	warn "log rotated at ${\scalar localtime} pid $$ perl $^V on $^O\n";
+	msg ("log rotated at ${\scalar localtime} pid $$ perl $^V on $^O\n");
 }
 
 sub TIEHANDLE { bless {} }
+sub PRINT { msg ($_[1]) }
 
-sub PRINT {
-	my (undef, $msg) = @_;
+sub msg {
+	my ($msg) = @_;
 
 	$msg =~ s/\n\z//;
 	$msg .= " errno=$!(" . int ($!) . ')', $! = 0 if $!;
