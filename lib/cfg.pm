@@ -10,6 +10,7 @@ our %C = (
 
 	LOG_FILE_NAME		=> 'var/log',
 	LOG_FILES		=> 9,
+	LOG_ROTATE		=> 1, # index of localtime, 1min 2hourly 3daily
 
 	DB_DS			=> 'dbi:SQLite:dbname=var/db',
 	DB_USER			=> '',

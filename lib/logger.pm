@@ -6,7 +6,7 @@ use strict;
 use cfg;
 
 our $fh;
-our $last_d;
+our $last;
 
 sub rotate {
 	my $file = $cfg::var{LOG_FILE_NAME};
@@ -17,24 +17,26 @@ sub rotate {
 	open $fh, '>', $file
 		or die "open $file: $!";
 	select $fh; $|++; select STDOUT;
-	$last_d = (localtime)[3];
 	tie *STDERR, __PACKAGE__;
 	$! = 0;
-	msg ("log rotated pid $$ perl $^V on $^O\n");
 }
 
 sub TIEHANDLE { bless {} }
-sub PRINT { msg ($_[1]) }
-
-sub msg {
-	my ($msg) = @_;
+sub PRINT {
+	my (undef, $msg) = @_;
 
 	$msg =~ s/\n\z//;
 	$msg .= " errno=$!(" . int ($!) . ')', $! = 0 if $!;
-	my ($s, $m, $h, $d) = localtime;
-	rotate () if !$last_d || $last_d != $d;
-	printf { $fh || *STDERR } "%02d:%02d:%02d %s %s \n",
-	    $h, $m, $s, (caller 1)[3] || '?', $msg;
+	my @t = localtime;
+	my $time = sprintf "%02d:%02d:%02d", @t[2,1,0];
+	my $rotate = $t[$cfg::var{LOG_ROTATE}];
+	if (!defined $last || $last != $rotate) {
+		rotate ();
+		$last = $rotate;
+		printf STDERR "%s %s\n", $time,
+		    "log rotated pid $$ perl $^V on $^O";
+	}
+	printf STDERR "%s %s %s \n", $time, (caller 1)[3] || '?', $msg;
 }
 
 sub trace {
