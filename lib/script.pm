@@ -262,13 +262,12 @@ sub NumEncode {
 	return $_;
 }
 
-our (@stack, $checksigCb, $checksigScript); # will be localized
+our (@stack, $checksigCb, $checksigScript); # localized
 
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
 sub Verify() { True (Pop) || die "fail" }
 sub PopN($) { map Pop, 1..$_[0] }
-sub PopNum() { NumDecode (Pop) }
 
 our %Exe; %Exe = (
 	OP_1NEGATE		=> sub { Push "\x81" },
@@ -300,22 +299,26 @@ our %Exe; %Exe = (
 
 	#OP_IF OP_NOTIF OP_ELSE OP_ENDIF
 	#OP_SIZE
-	#arithmetic
 	#OP_RIPEMD160 OP_SHA1 OP_HASH256
 );
 
+sub PopNum() { NumDecode (Pop) }
+sub PushNum($) { Push (NumEncode ($_[0])) }
+
 our ($a, $b); # localized
-our %MATH2 = (
+our %Math2 = (
 	OP_ADD	=> sub { $a + $b },
 	OP_MIN	=> sub { $a < $b ? $a : $b },
 	OP_MAX	=> sub { $a > $b ? $a : $b },
 );
 
-$Exe{$_} = sub {
-	local $b = PopNum;
-	local $a = PopNum;
-	Push NumEncode ($MATH2{$_}());
-} for keys %MATH2;
+for my $op (keys %Math2) {
+	$Exe{$op} = sub {
+		local $b = PopNum;
+		local $a = PopNum;
+		PushNum $Math2{$op}();
+	};
+}
 
 sub checksig {
 	my ($sig, $pub) = @_;
