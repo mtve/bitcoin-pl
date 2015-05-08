@@ -339,7 +339,6 @@ sub Run {
 			Verify if $1;
 		} elsif ($op eq 'OP_CODESEPARATOR') {
 			$checksigScript = $script;
-$ecdsa::PROB_VERIFY = 1;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
 		} else {
