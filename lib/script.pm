@@ -224,12 +224,13 @@ sub FindAndDel {
 	my ($script, $del) = @_;
 
 	my $res = '';
+	warn "debug script=$Xr{$script} del=$Xr{$del}\n";
 	while (1) {
 		$script =~ s/^(\Q$del\E)+//;
 		last if !$script;
 		$res .= OpPut (OpGet ($script));
 	}
-	warn "debug script=$Xr{$script} del=$Xr{$del} res=$Xr{$res}\n";
+	warn "debug res=$Xr{$res}\n";
 	return $res;
 }
 
