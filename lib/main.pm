@@ -403,7 +403,7 @@ sub init () {
 	}
 	$blk_best = data::blk_best () or die "no best";
 	warn "chain $cfg::var{CHAIN} best $blk_best->{nHeight} " .
-		"$X{$blk_best->{hash}}";
+		"$X{$blk_best->{hash}}\n";
 }
 
 #

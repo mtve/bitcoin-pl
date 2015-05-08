@@ -192,7 +192,7 @@ sub init {
 	});
 
 	if ($dbh->{Driver}->{Name} =~ /sqlite/i) {
-		warn "sqlite specials";
+		warn "sqlite specials\n";
 		$dbh->do ('PRAGMA synchronous = OFF');
 		$dbh->do ('PRAGMA cache_size = 20000');
 	}
@@ -243,7 +243,7 @@ SQL
 		cb	=> \&commit,
 	);
 	warn "using DBI $DBI::VERSION driver $dbh->{Driver}{Name} " .
-		"@{[ $dbh->get_info(18) ]}";
+		"@{[ $dbh->get_info(18) ]}\n";
 }
 
 sub tx_save {
