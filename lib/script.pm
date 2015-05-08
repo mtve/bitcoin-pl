@@ -276,6 +276,7 @@ our %Exe; %Exe = (
 	OP_EQUAL		=> sub { Push Bool (Pop eq Pop) },
 	OP_VERIFY		=> \&Verify,
 	OP_EQUALVERIFY		=> sub { $Exe{OP_EQUAL} (); Verify; },
+	OP_NUMEQUALVERIFY	=> sub { $Exe{OP_NUMEQUAL} (); Verify; },
 
 	#OP_TOALTSTACK
 	#OP_FROMALTSTACK
@@ -306,17 +307,43 @@ sub PopNum() { NumDecode (Pop) }
 sub PushNum($) { Push (NumEncode ($_[0])) }
 
 our ($a, $b); # localized
+
 our %Math2 = (
-	OP_ADD	=> sub { $a + $b },
-	OP_MIN	=> sub { $a < $b ? $a : $b },
-	OP_MAX	=> sub { $a > $b ? $a : $b },
+	OP_ADD			=> sub { $a + $b },
+	OP_SUB			=> sub { $a - $b },
+	OP_MIN			=> sub { $a < $b ? $a : $b },
+	OP_MAX			=> sub { $a > $b ? $a : $b },
+	OP_BOOLAND		=> sub { $a && $b ? 1 : 0 },
+	OP_BOOLOR		=> sub { $a || $b ? 1 : 0 },
+	OP_NUMEQUAL		=> sub { $a == $b },
+	OP_NUMNOTEQUAL		=> sub { $a != $b },
+	OP_LESSTHAN		=> sub { $a < $b },
+	OP_GREATERTHAN		=> sub { $a > $b },
+	OP_LESSTHANOREQUAL	=> sub { $a <= $b },
+	OP_GREATERTHANOREQUAL	=> sub { $a >= $b },
+);
+
+our %Math1 = (
+	OP_1ADD			=> sub { $a + 1 },
+	OP_1SUB			=> sub { $a - 1 },
+	OP_NEGATE		=> sub { -$a },
+	OP_ABS			=> sub { abs $a },
+	OP_NOT			=> sub { $a == 0 },
+	OP_0NOTEQUAL		=> sub { $a != 0 },
 );
 
 for my $op (keys %Math2) {
 	$Exe{$op} = sub {
 		local $b = PopNum;
 		local $a = PopNum;
-		PushNum $Math2{$op}();
+		PushNum $Math2{$op} ();
+	};
+}
+
+for my $op (keys %Math1) {
+	$Exe{$op} = sub {
+		local $a = PopNum;
+		PushNum $Math1{$op} ();
 	};
 }
 

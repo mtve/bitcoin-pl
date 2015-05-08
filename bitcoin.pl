@@ -17,7 +17,6 @@ our $VERSION = '150508';
 
 print "welcome to bitcoin-pl v$VERSION\n";
 cfg::load ();
-logger::rotate ();
 data::init ();
 main::init ();
 web::init ();

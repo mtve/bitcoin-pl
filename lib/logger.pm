@@ -17,9 +17,10 @@ sub rotate {
 	open $fh, '>', $file
 		or die "open $file: $!";
 	select $fh; $|++; select STDOUT;
-	tie *STDERR, __PACKAGE__;
 	$! = 0;
 }
+
+tie *STDERR, __PACKAGE__;
 
 sub TIEHANDLE { bless {} }
 sub PRINT {

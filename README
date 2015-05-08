@@ -1,7 +1,7 @@
 Bitcoin implemented in perl, meant to be portable.
 
 Status:
- Work in progress, stopped at tx 3a5e0977cc64 block 168910 (2012-02-28)
+ Work in progress.
 
 Usage:
  perl bitcoin.pl

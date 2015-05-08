@@ -1,0 +1,27 @@
+#! /usr/bin/perl -l
+
+use warnings;
+use strict;
+use lib '../lib';
+
+use script;
+use util;
+
+my @a;
+for my $i (0..6) {
+	push @a, map $_ * 10**$i, -300..300
+}
+
+for (@a) {
+	eval {
+		my $e = script::NumEncode ($_);
+		script::NumDecode ($e) == $_ or die $Xr{$e};
+	};
+	die "$_: $@\n" if $@;
+}
+
+script::Push (script::NumEncode ($_)) for 3,4;
+$script::Exe{OP_MAX} ();
+print $Xr{$script::stack[-1]};
+$script::Exe{OP_NEGATE} ();
+print $Xr{$script::stack[-1]};
