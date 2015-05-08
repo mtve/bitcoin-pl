@@ -27,16 +27,19 @@ sub PRINT {
 
 	$msg =~ s/\n\z//;
 	$msg .= " errno=$!(" . int ($!) . ')', $! = 0 if $!;
+
 	my @t = localtime;
 	my $time = sprintf "%02d:%02d:%02d", @t[2,1,0];
+
 	my $rotate = $t[$cfg::var{LOG_ROTATE}];
 	if (!defined $last || $last != $rotate) {
-		rotate ();
 		$last = $rotate;
-		printf STDERR "%s %s\n", $time,
-		    "log rotated pid $$ perl $^V on $^O";
+		rotate ();
+		print { $fh || *STDOUT }
+		    "$time log rotated pid $$ perl $^V on $^O\n";
 	}
-	printf STDERR "%s %s %s \n", $time, (caller 1)[3] || '?', $msg;
+
+	print { $fh || *STDOUT } "$time @{[ (caller 1)[3] || '?' ]} $msg\n";
 }
 
 sub trace {
