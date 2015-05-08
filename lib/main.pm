@@ -451,8 +451,8 @@ sub EvalScriptCheck {
 
 	return script::VerifyTx ($scriptSig, $scriptPubKey, sub {
 		my ($script, $sig, $pub) = @_;
-		return if rand () > $PROB_CHECKSIG;
-		CheckSig ($script, $txTo, $nIn, $sig, $pub);
+		return 1 if rand () > $PROB_CHECKSIG;
+		return CheckSig ($script, $txTo, $nIn, $sig, $pub);
 	});
 }
 
