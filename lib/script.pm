@@ -193,7 +193,7 @@ sub Op {
 	exists $OP{$op} ? chr $OP{$op} : die "unknown op $op";
 }
 
-sub GetOp {
+sub OpGet {
 	# $_[0] gets modified
 
 	die "empty script" if $_[0] eq '';
@@ -210,7 +210,7 @@ sub GetOp {
 	return wantarray ? ($op, $par) : $op;
 }
 
-sub PutOp {
+sub OpPut {
 	my ($op, $par) = @_;
 
 	$op eq 'OP_PUSHDATA' ? pack 'C/a', $par :
@@ -223,13 +223,13 @@ sub PutOp {
 sub FindAndDel {
 	my ($script, $del) = @_;
 
-	warn "debug script $Xr{$script} del $Xr{$del}\n";
 	my $res = '';
 	while (1) {
 		$script =~ s/^(\Q$del\E)+//;
 		last if !$script;
-		$res .= PutOp (GetOp ($script));
+		$res .= OpPut (OpGet ($script));
 	}
+	warn "debug script=$Xr{$script} del=$Xr{$del} res=$Xr{$res}\n";
 	return $res;
 }
 
@@ -250,7 +250,7 @@ sub NumDecode {
 	return $neg ? -$num : $num;
 }
 
-our @stack; # will be localized
+our (@stack, $checksigCb, $checksigScript); # will be localized
 
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
@@ -291,14 +291,22 @@ our %Exe; %Exe = (
 	#OP_RIPEMD160 OP_SHA1 OP_HASH256
 );
 
-sub multisig {
-	my ($checksig_cb, $checksig_code) = @_;
+sub checksig {
+	my ($sig, $pub) = @_;
 
+	my $script = $checksigScript;
+	$script = FindAndDel ($script, Bin ($sig));
+	$script = FindAndDel ($script, Op ('OP_CODESEPARATOR'));
+
+	return $checksigCb->($script, $sig, $pub);
+}
+
+sub checkmultisig {
 	my @pub = PopN (NumDecode (Pop)) or die "no pubkeys";
 	my @sig = PopN (NumDecode (Pop)) or die "no sigs";
 
 	while (@sig) {
-		if ($checksig_cb->($sig[0], $pub[0], $checksig_code)) {
+		if (checksig ($sig[0], $pub[0])) {
 			shift @sig;
 		}
 		shift @pub;
@@ -307,12 +315,12 @@ sub multisig {
 	return 1;
 }
 
-sub Exe {
-	my ($script, $checksig_cb, $checksig_code) = @_;
+sub Run {
+	my ($script) = @_;
 
-	local @stack;
+	local $checksigScript = $script;
 	while (length $script) {
-		my ($op, $par) = GetOp ($script);
+		my ($op, $par) = OpGet ($script);
 		warn "debug $op $Xr{$par} stack @Xr{@stack}\n";
 		if ($op =~ /^OP_PUSHDATA/) {
 			Push $par;
@@ -323,13 +331,13 @@ sub Exe {
 		} elsif ($op =~ /^OP_CHECKSIG(VERIFY)?\z/) {
 			my $pub = Pop;
 			my $sig = Pop;
-			Push Bool ($checksig_cb->($sig, $pub, $checksig_code));
+			Push Bool (checksig ($sig, $pub));
 			Verify if $1;
 		} elsif ($op =~ /^OP_CHECKMULTISIG(VERIFY)?\z/) {
-			Push Bool (multisig ($checksig_cb, $checksig_code));
+			Push Bool (checkmultisig ());
 			Verify if $1;
 		} elsif ($op eq 'OP_CODESEPARATOR') {
-			$checksig_code = $script;
+			$checksigScript = $script;
 $ecdsa::PROB_VERIFY = 1;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
@@ -337,6 +345,16 @@ $ecdsa::PROB_VERIFY = 1;
 			die "$op is not implemented";
 		}
 	}
+}
+
+sub VerifyTx {
+	my ($scriptSig, $scriptPubKey, $cb) = @_;
+
+	local @stack;
+	local $checksigCb = $cb;
+	Run ($scriptSig);
+	Run ($scriptPubKey);
+	# XXX bip-16
 	return True (Pop);
 }
 
@@ -346,7 +364,7 @@ sub Parse {
 	my $len = length $script;
 	while ($script ne '') {
 		my $pc = $len - length $script;
-		my ($op, $par) = GetOp ($script);
+		my ($op, $par) = OpGet ($script);
 		print "$pc: $op $Xr{$par}\n";
 	}
 }
@@ -369,12 +387,12 @@ my $fix1 = qr/^($nop|$cs)+\z/o;
 sub GetBitcoinAddressHash160 {
 	my ($script) = @_;
 
-	GetOp ($script) eq 'OP_DUP'				or return;
-	GetOp ($script) eq 'OP_HASH160'				or return;
-	my ($op, $hash) = GetOp ($script);
+	OpGet ($script) eq 'OP_DUP'				or return;
+	OpGet ($script) eq 'OP_HASH160'				or return;
+	my ($op, $hash) = OpGet ($script);
 	$op eq 'OP_PUSHDATA' && length ($hash) == 160 / 8	or return;
-	GetOp ($script) eq 'OP_EQUALVERIFY'			or return;
-	GetOp ($script) eq 'OP_CHECKSIG'			or return;
+	OpGet ($script) eq 'OP_EQUALVERIFY'			or return;
+	OpGet ($script) eq 'OP_CHECKSIG'			or return;
 	$script =~ s/$fix1//;
 	$script eq ''						or return;
 	return $hash;
@@ -383,9 +401,9 @@ sub GetBitcoinAddressHash160 {
 sub GetPubKey {
 	my ($script) = @_;
 
-	my ($op, $pub) = GetOp ($script);
+	my ($op, $pub) = OpGet ($script);
 	$op =~ /^OP_PUSHDATA/					or return;
-	GetOp ($script) eq 'OP_CHECKSIG'			or return;
+	OpGet ($script) eq 'OP_CHECKSIG'			or return;
 	$script eq ''						or return;
 	return $pub;
 }

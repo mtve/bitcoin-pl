@@ -411,14 +411,14 @@ sub init () {
 #
 
 sub SignatureHash {
-	my ($scriptCode, $txTo, $nIn, $nHashType) = @_;
+	my ($script, $txTo, $nIn, $nHashType) = @_;
 
 	$nIn < @{ $txTo->{vin} } or die "assert";
 
 	my $txTmp = { %$txTo, vin => [
 		map +{ %$_, scriptSig => '' }, @{ $txTo->{vin} }
 	] };
-	$txTmp->{vin}[$nIn]{scriptSig} = $scriptCode;
+	$txTmp->{vin}[$nIn]{scriptSig} = $script;
 
 	my $ss = serialize::Serialize ('CTransaction', $txTmp) . 
 		serialize::SerializeInt32 ($nHashType);
@@ -426,17 +426,15 @@ sub SignatureHash {
 }
 
 sub CheckSig {
-	my ($scriptCode, $txTo, $nIn, $sig, $pub) = @_;
-
-	$scriptCode = script::FindAndDel ($scriptCode, script::Bin ($sig));
+	my ($script, $txTo, $nIn, $sig, $pub) = @_;
 
 	# last byte of sig is tx type
 	$sig =~ s/(\C)\z// or die "empty sig";
 	my $nHashType = ord $1;
 
-	my $hash = SignatureHash ($scriptCode, $txTo, $nIn, $nHashType)
+	my $hash = SignatureHash ($script, $txTo, $nIn, $nHashType)
 		or return;
-	warn "hash=$X{$hash} sig=$Xr{$sig} pub=$Xr{$pub}";
+	warn "hash=$X{$hash} sig=$Xr{$sig} pub=$Xr{$pub} type=$nHashType";
 
 	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
 }
@@ -445,11 +443,11 @@ sub EvalScriptCheck {
 	my ($scriptSig, $scriptPubKey, $txTo, $nIn) = @_;
 
 	# XXX PK/PKH/SH/MS/NULL/NONSTD
-	return script::Exe ($scriptSig . $scriptPubKey, sub {
-		my ($sig, $pub, $code) = @_;
 
-		CheckSig ($code, $txTo, $nIn, $sig, $pub);
-	}, $scriptPubKey);
+	return script::VerifyTx ($scriptSig, $scriptPubKey, sub {
+		my ($script, $sig, $pub) = @_;
+		CheckSig ($script, $txTo, $nIn, $sig, $pub);
+	});
 }
 
 1;
