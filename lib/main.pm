@@ -85,6 +85,8 @@ sub TransactionIncome {
 		D && warn "$X{$tx->{hash}}:$_ <- $X{$txFrom_h}:$nOut " .
 		    "=$nValue $Xr{$scriptSig} <= $Xr{$scriptPubKey} $last";
 
+		next if !$nValue; # blk 168910 tx 3a5e0977cc64 ?
+
 		EvalScriptCheck ($scriptSig, $scriptPubKey, $tx, $_)
 			or die "tx check failed";
 
