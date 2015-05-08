@@ -337,6 +337,7 @@ for my $op (keys %Math2) {
 		local $b = PopNum;
 		local $a = PopNum;
 		PushNum $Math2{$op} ();
+$ecdsa::PROB_VERIFY = 1; # XXX
 	};
 }
 
@@ -344,6 +345,7 @@ for my $op (keys %Math1) {
 	$Exe{$op} = sub {
 		local $a = PopNum;
 		PushNum $Math1{$op} ();
+$ecdsa::PROB_VERIFY = 1; # XXX
 	};
 }
 
@@ -390,9 +392,11 @@ sub Run {
 			Push Bool (checksig ($sig, $pub));
 			Verify if $1;
 		} elsif ($op =~ /^OP_CHECKMULTISIG(VERIFY)?\z/) {
+$ecdsa::PROB_VERIFY = 1; # XXX
 			Push Bool (checkmultisig ());
 			Verify if $1;
 		} elsif ($op eq 'OP_CODESEPARATOR') {
+$ecdsa::PROB_VERIFY = 1; # XXX
 			$checksigScript = $script;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
@@ -404,6 +408,8 @@ sub Run {
 
 sub VerifyTx {
 	my ($scriptSig, $scriptPubKey, $cb) = @_;
+
+$ecdsa::PROB_VERIFY = .001; # XXX
 
 	local @stack;
 	local $checksigCb = $cb;
