@@ -1,17 +1,18 @@
 Bitcoin implemented in perl, meant to be portable.
 
 Status:
- Work in progress on multisig, stop at block 163685 (2012-01-24)
+ Work in progress.
 
 Usage:
  perl bitcoin.pl
 
 For speed it's recommended to place db file on memory filesystem like this:
  mount -t tmpfs -o size=10g tmpfs `pwd`/var
+ mount -o remount,size=15G tmpfs /.1/
 
 Features:
 - web interface
-- data stored in sql via DBI (sqlite by default)
+- data stored in SQL database via DBI (SQLite by default)
 - blockchain download
 - chain branches
 - key management with confirmed amount and unconfirmed delta
@@ -24,7 +25,8 @@ links:
  https://bitcoin.org/en/developer-examples#p2sh-multisig
 
 todo:
-- bip11 multisig
+. bip11 multisig
+- bip16 strictness
 - bip34 block.nVersion=2 coinbase starts with serialized block height
 - bip66 dersig rules, for block.nVersion=3
 - transaction malleability checks
