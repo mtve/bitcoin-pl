@@ -6,8 +6,8 @@ use strict;
 use util;
 use base58;
 
-sub DebugStop  { $main::PROB_CHECKSIG = .001 }
-sub DebugStart { $main::PROB_CHECKSIG = 1 }
+sub DebugStop()  { $main::PROB_CHECKSIG = .001 }
+sub DebugStart() { $main::PROB_CHECKSIG = 1 }
 
 our %SIGHASH = (
 	ALL			=> 1,
@@ -333,7 +333,7 @@ our %Math1 = (
 
 for my $op (keys %Math2) {
 	$Exe{$op} = sub {
-		DebugStart ();
+		DebugStart;
 		local $b = PopNum;
 		local $a = PopNum;
 		PushNum $Math2{$op} ();
@@ -342,7 +342,7 @@ for my $op (keys %Math2) {
 
 for my $op (keys %Math1) {
 	$Exe{$op} = sub {
-		DebugStart ();
+		DebugStart;
 		local $a = PopNum;
 		PushNum $Math1{$op} ();
 	};
@@ -391,11 +391,11 @@ sub Run {
 			PushNum (checksig ($sig, $pub));
 			Verify if $1;
 		} elsif ($op =~ /^OP_CHECKMULTISIG(VERIFY)?\z/) {
-			DebugStart ();
+			DebugStart;
 			PushNum (checkmultisig ());
 			Verify if $1;
 		} elsif ($op eq 'OP_CODESEPARATOR') {
-			DebugStart ();
+			DebugStart;
 			$checksigScript = $script;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
@@ -408,7 +408,7 @@ sub Run {
 sub VerifyTx {
 	my ($scriptSig, $scriptPubKey, $cb) = @_;
 
-	DebugStop ();
+	DebugStop;
 	local @stack;
 	local $checksigCb = $cb;
 	Run ($scriptSig);
