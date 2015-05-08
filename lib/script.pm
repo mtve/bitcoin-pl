@@ -5,7 +5,9 @@ use strict;
 
 use util;
 use base58;
-use ecdsa;
+
+sub DebugStop  { $main::PROB_CHECKSIG = .001 }
+sub DebugStart { $main::PROB_CHECKSIG = 1 }
 
 our %SIGHASH = (
 	ALL			=> 1,
@@ -234,9 +236,6 @@ sub FindAndDel {
 	return $res;
 }
 
-sub Bool { $_[0] ? chr 1 : chr 0 }
-sub True { $_[0] eq chr 1 }
-
 sub NumDecode {
 	my ($bin) = @_;
 
@@ -266,14 +265,17 @@ our (@stack, $checksigCb, $checksigScript); # localized
 
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
-sub Verify() { True (Pop) || die "fail" }
 sub PopN($) { map Pop, 1..$_[0] }
+sub PopNum() { NumDecode (Pop) }
+sub PushNum($) { Push (NumEncode ($_[0])) }
+sub PopTrue() { PopNum == 1 }
+sub Verify() { PopTrue || die "fail" }
 
 our %Exe; %Exe = (
-	OP_1NEGATE		=> sub { Push "\x81" },
+	OP_1NEGATE		=> sub { PushNum -1 },
 	OP_SHA256		=> sub { Push base58::sha256 (Pop) },
 	OP_HASH160		=> sub { Push base58::Hash160 (Pop) },
-	OP_EQUAL		=> sub { Push Bool (Pop eq Pop) },
+	OP_EQUAL		=> sub { PushNum (Pop eq Pop) },
 	OP_VERIFY		=> \&Verify,
 	OP_EQUALVERIFY		=> sub { $Exe{OP_EQUAL} (); Verify; },
 	OP_NUMEQUALVERIFY	=> sub { $Exe{OP_NUMEQUAL} (); Verify; },
@@ -303,9 +305,6 @@ our %Exe; %Exe = (
 	#OP_RIPEMD160 OP_SHA1 OP_HASH256
 );
 
-sub PopNum() { NumDecode (Pop) }
-sub PushNum($) { Push (NumEncode ($_[0])) }
-
 our ($a, $b); # localized
 
 our %Math2 = (
@@ -334,18 +333,18 @@ our %Math1 = (
 
 for my $op (keys %Math2) {
 	$Exe{$op} = sub {
+		DebugStart ();
 		local $b = PopNum;
 		local $a = PopNum;
 		PushNum $Math2{$op} ();
-$ecdsa::PROB_VERIFY = 1; # XXX
 	};
 }
 
 for my $op (keys %Math1) {
 	$Exe{$op} = sub {
+		DebugStart ();
 		local $a = PopNum;
 		PushNum $Math1{$op} ();
-$ecdsa::PROB_VERIFY = 1; # XXX
 	};
 }
 
@@ -385,18 +384,18 @@ sub Run {
 		} elsif ($op =~ /^OP_NOP\d*\z/) {
 			# nothing
 		} elsif ($op =~ /^OP_(\d+)\z/) {
-			Push ($1 ? chr $1 : '');
+			PushNum ($1);
 		} elsif ($op =~ /^OP_CHECKSIG(VERIFY)?\z/) {
 			my $pub = Pop;
 			my $sig = Pop;
-			Push Bool (checksig ($sig, $pub));
+			PushNum (checksig ($sig, $pub));
 			Verify if $1;
 		} elsif ($op =~ /^OP_CHECKMULTISIG(VERIFY)?\z/) {
-$ecdsa::PROB_VERIFY = 1; # XXX
-			Push Bool (checkmultisig ());
+			DebugStart ();
+			PushNum (checkmultisig ());
 			Verify if $1;
 		} elsif ($op eq 'OP_CODESEPARATOR') {
-$ecdsa::PROB_VERIFY = 1; # XXX
+			DebugStart ();
 			$checksigScript = $script;
 		} elsif (exists $Exe{$op}) {
 			$Exe{$op} ();
@@ -409,14 +408,13 @@ $ecdsa::PROB_VERIFY = 1; # XXX
 sub VerifyTx {
 	my ($scriptSig, $scriptPubKey, $cb) = @_;
 
-$ecdsa::PROB_VERIFY = .001; # XXX
-
+	DebugStop ();
 	local @stack;
 	local $checksigCb = $cb;
 	Run ($scriptSig);
 	Run ($scriptPubKey);
 	# XXX bip-16
-	return True (Pop);
+	return PopTrue;
 }
 
 sub Parse {

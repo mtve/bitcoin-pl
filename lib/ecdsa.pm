@@ -7,8 +7,6 @@ use warnings;
 use strict;
 use Math::BigInt;
 
-our $PROB_VERIFY = .001;	# speed hack
-
 sub D() { 1 }
 
 sub i($) { Math::BigInt->new ($_[0]) }
@@ -290,7 +288,6 @@ sub Verify {
 	my $e = hash_decode ($hash);
 	my $s = sig_decode ($sig);
 
-	return 1 if rand () > $PROB_VERIFY;
 	my $res = ec_verify ($p, $e, $s);
 	D && warn $res + 0;
 	return $res;

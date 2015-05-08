@@ -415,7 +415,8 @@ sub init () {
 sub SignatureHash {
 	my ($script, $txTo, $nIn, $nHashType) = @_;
 
-	$nIn < @{ $txTo->{vin} } or die "assert";
+	$nHashType == 1 or die "unknown hashtype=$nHashType";
+	$nIn < @{ $txTo->{vin} } or die "bad nIn=$nIn";
 
 	my $txTmp = { %$txTo, vin => [
 		map +{ %$_, scriptSig => '' }, @{ $txTo->{vin} }
@@ -441,6 +442,8 @@ sub CheckSig {
 	return ecdsa::Verify ({ pub => $pub }, $hash, $sig);
 }
 
+our $PROB_CHECKSIG = 1;
+
 sub EvalScriptCheck {
 	my ($scriptSig, $scriptPubKey, $txTo, $nIn) = @_;
 
@@ -448,7 +451,8 @@ sub EvalScriptCheck {
 
 	return script::VerifyTx ($scriptSig, $scriptPubKey, sub {
 		my ($script, $sig, $pub) = @_;
-		CheckSig ($script, $txTo, $nIn, $sig, $pub);
+		CheckSig ($script, $txTo, $nIn, $sig, $pub)
+			if rand () > $PROB_CHECKSIG;
 	});
 }
 
