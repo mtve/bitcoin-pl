@@ -20,7 +20,7 @@ sub rotate {
 	$last_d = (localtime)[3];
 	tie *STDERR, __PACKAGE__;
 	$! = 0;
-	msg ("log rotated at ${\scalar localtime} pid $$ perl $^V on $^O\n");
+	msg ("log rotated pid $$ perl $^V on $^O\n");
 }
 
 sub TIEHANDLE { bless {} }
