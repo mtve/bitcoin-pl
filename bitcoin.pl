@@ -13,11 +13,11 @@ use net;
 use event;
 use cfg;
 
-our $VERSION = '150507';
+our $VERSION = '150508';
 
-print "welcome to bitcoin perl v$VERSION\n";
-logger::rotate ();
+print "welcome to bitcoin-pl v$VERSION\n";
 cfg::load ();
+logger::rotate ();
 data::init ();
 main::init ();
 web::init ();
