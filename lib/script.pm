@@ -5,6 +5,7 @@ use strict;
 
 use util;
 use base58;
+use ripemd160;
 
 sub DebugStop()  { $main::PROB_CHECKSIG = .001 }
 sub DebugStart() { $main::PROB_CHECKSIG = 1 }
@@ -273,8 +274,13 @@ sub Verify() { PopTrue || die "fail" }
 
 our %Exe; %Exe = (
 	OP_1NEGATE		=> sub { PushNum -1 },
-	OP_SHA256		=> sub { Push base58::sha256 (Pop) },
+
+	OP_SHA256		=> sub { Push base58::sha256  (Pop) },
 	OP_HASH160		=> sub { Push base58::Hash160 (Pop) },
+	OP_RIPEMD160		=> sub { Push ripemd160::hash (Pop) },
+	OP_SHA1			=> sub { Push base58::sha1    (Pop) },
+	OP_HASH256		=> sub { Push base58::Hash256 (Pop) },
+
 	OP_EQUAL		=> sub { PushNum (Pop eq Pop) },
 	OP_VERIFY		=> \&Verify,
 	OP_EQUALVERIFY		=> sub { $Exe{OP_EQUAL} (); Verify; },
@@ -302,7 +308,6 @@ our %Exe; %Exe = (
 
 	#OP_IF OP_NOTIF OP_ELSE OP_ENDIF
 	#OP_SIZE
-	#OP_RIPEMD160 OP_SHA1 OP_HASH256
 );
 
 our ($a, $b); # localized

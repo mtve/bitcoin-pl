@@ -440,7 +440,7 @@ sub CheckSig {
 	warn "hash=$X{$hash} sig=$Xr{$sig} pub=$Xr{$pub} type=$nHashType";
 
 	my $v = eval { ecdsa::Verify ({ pub => $pub }, $hash, $sig) } || 0;
-	warn "failed $@" if $@;
+	warn "warn ecdsa::Verify failed: $@" if $@;
 	return $v;
 }
 

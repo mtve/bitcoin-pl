@@ -125,10 +125,12 @@ sha256_ ('') eq pack 'H*',
 
 eval { require Digest::SHA };
 *sha256 = $@ ? \&sha256_ : \&Digest::SHA::sha256;
+*sha1 = $@ ? die "sha1 is not implemented" : \&Digest::SHA::sha1: 
 
 sub Hash { sha256 (sha256 ($_[0])) }
 
 sub Hash160 { ripemd160::hash (sha256 ($_[0])) }
+sub Hash256 { sha256 (sha256 ($_[0])) }
 
 sub DecodeBase58Check {
 	my ($enc) = @_;
