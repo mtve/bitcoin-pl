@@ -216,7 +216,7 @@ sub pub_decode {
 		$l == $EC_SIZE / 8 * 2 + 1	or die "bad pub size $l";
 		$x = i_decode (substr $bin, 1, $EC_SIZE / 8);
 		$y = i_decode (substr $bin, $EC_SIZE / 8 + 1);
-	} elsif ($t == 0 || $t == 2 || $t == 3) { # blk 211796 tx 274f t=0
+	} elsif ($t == 2 || $t == 3) {
 		$l == $EC_SIZE / 8 + 1		or die "bad pub size $l";
 		$x = i_decode (substr $bin, 1, $EC_SIZE / 8);
 		$y = e_solve ($x);

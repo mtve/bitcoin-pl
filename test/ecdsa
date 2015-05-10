@@ -6,15 +6,12 @@ use lib '../lib';
 
 use ecdsa;
 
-$ecdsa::PROB_VERIFY = 1;
-
 print ecdsa::version;
 
 ecdsa::pub_decode (pack 'H*', $_) or die for qw(
 	045075902f0a1dcf519a26e331db1ba3ea0b5dcec1e3e0ed8ad2aeace22057c4f5b1a05468c3047838bb987cb4653ddd434fd111e0352e6c1a9f635290c8323276
 	0271f1e54016d623897fa9b973c2f084376ff61651ee5b71eef0d98a8be56a75cc
 	037af54de87deb61e8885a97cff8d41aa6d188139c3ee3b3ec7e740a874bc2ac7f
-	00f2b7816db49d55d24df7bdffdbc1e203b424e8cd39f5651ab938e5e4a193569e
 );
 
 print "ok 0";
