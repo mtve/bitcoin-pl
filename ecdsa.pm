@@ -213,20 +213,29 @@ sub pub_decode {
 
 sub hash_decode {
 	my ($hash) = @_;
-
-	my $s = length ($hash) * 8 - $EC_SIZE;
+    my $s = length ($hash) * 8 - $EC_SIZE;
 	my $e = i_decode ($hash);
 	$e = $e->brsft ($s) if $s > 0;
 	return $e;
+}
+
+sub ber_hex {
+    # like i_encode() but doesn't attempt to pad it out to any length and makes sure there is a leading null if otherwise the first high bit would be set (which would indicate negative, but these are never neg)
+    # standardizing on exactly this formatting of numbers was the main part of the "canonicalization" fix for the transaction mutability bug
+    my $i = shift;
+    my $bin = $i->as_hex;
+    $bin =~ s/^0x// or die $i;
+    $bin = '00' . $bin if hex( substr($bin, 0, 2) ) >= 0x80;
+	return pack 'H*', $bin;
 }
 
 sub sig_encode {
 	my ($sig) = @_;
 
 	my ($r, $s) = @$sig;
-	return pack 'C w/a', 0x30,
-		pack ('C w/a', 0x02, i_encode ($r)) .
-		pack ('C w/a', 0x02, i_encode ($s));
+	return pack 'C C/a', 0x30,
+		pack ('C C/a', 0x02, ber_hex($r) ) .
+		pack ('C C/a', 0x02, ber_hex($s) );
 }
 
 sub sig_decode {

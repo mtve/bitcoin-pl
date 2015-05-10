@@ -29,15 +29,30 @@ print "ok 2";
 
 my $k = ecdsa::GenKey ();
 my $h = 123;
+
+use Data::Dumper;
+# warn Dumper $k;
+
 my $s = ecdsa::Sign ($k, $h);
 ecdsa::Verify ($k, $h, $s) or die;
 print "ok 3";
+
+# test that DER encoded strings are correctly conicalized when generating ASN.1 encoded signitures
+
+$k = { priv => from_hex('313032373533323531323539343134313833383035303734333633333334323835323731373732313039363835353931393535383338383833343439313231383132383635343632323238343132') };
+$h = from_hex('3939363234303634303238353836333033343037373931303937393038383131303238343535373730383533333735323730343932343437383735303330383235333634313733373734343532');
+$s = ecdsa::Sign( $k, $h );
+print "ok 4" if $s eq from_hex('30460221009bb961c94162063af38f24fc058f66144d723f16a1896612151f763984e8e8750221009c8b8aa577b5a72b5e32114983c0c0bd02a788ea70c91fb49138b44945a99b00');
 
 while (<DATA>) {
 	my ($p, $h, $s) = /(\S+) (\S+) (\S+)/ or die;
 	$_ = pack 'H*', $_ for $p, $h, $s;
 	ecdsa::Verify ({ pub => $p }, $h, $s) or die $_;
 	print "ok";
+}
+
+sub from_hex {
+    pack( "H*", $_[0] );
 }
 
 __DATA__
