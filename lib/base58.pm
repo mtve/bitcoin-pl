@@ -125,7 +125,7 @@ sha256_ ('') eq pack 'H*',
 
 eval { require Digest::SHA };
 *sha256 = $@ ? \&sha256_ : \&Digest::SHA::sha256;
-*sha1 = $@ ? die "sha1 is not implemented" : \&Digest::SHA::sha1: 
+*sha1 = $@ ? die "sha1 is not implemented" : \&Digest::SHA::sha1;
 
 sub Hash { sha256 (sha256 ($_[0])) }
 
