@@ -265,7 +265,7 @@ sub NumEncode {
 sub Bool {
 	my ($bin) = @_;
 
-	return $num =~ /[^\x00]/ && $num !~ /^\x00*\x80\z/;
+	return $bin =~ /[^\x00]/ && $bin !~ /^\x00*\x80\z/;
 }
 
 our (@stack, $checksigCb, $checksigScript); # localized
