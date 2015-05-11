@@ -8,7 +8,7 @@ Usage:
 
 For speed it's recommended to place db file on memory filesystem like this:
  mount -t tmpfs -o size=10g tmpfs `pwd`/var
- mount -o remount,size=15G tmpfs /.1/
+ mount -o remount,size=40g tmpfs `pwd`/var
 
 Features:
 - web interface
@@ -22,6 +22,7 @@ Features:
 links:
  https://en.bitcoin.it/wiki/Protocol_specification
  https://github.com/bitcoin/bips
+ https://bitcoin.org/en/developer-guide#standard-transactions
  https://bitcoin.org/en/developer-examples#p2sh-multisig
 
 todo:
