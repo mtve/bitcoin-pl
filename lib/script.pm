@@ -262,6 +262,12 @@ sub NumEncode {
 	return $_;
 }
 
+sub Bool {
+	my ($bin) = @_;
+
+	return $num =~ /[^\x00]/ && $num !~ /^\x00*\x80\z/;
+}
+
 our (@stack, $checksigCb, $checksigScript); # localized
 
 sub Pop() { @stack ? pop @stack : die "empty stack" }
@@ -269,8 +275,7 @@ sub Push(@) { push @stack, @_ }
 sub PopN($) { map Pop, 1..$_[0] }
 sub PopNum() { NumDecode (Pop) }
 sub PushNum($) { Push (NumEncode ($_[0])) }
-sub PopTrue() { Pop eq chr 1 }
-sub Verify() { PopTrue || die "fail" }
+sub Verify() { Bool (Pop) || die "fail" }
 
 our %Exe; %Exe = (
 	OP_1NEGATE		=> sub { PushNum -1 },
@@ -419,7 +424,7 @@ sub VerifyTx {
 	Run ($scriptSig);
 	Run ($scriptPubKey);
 	# XXX bip-16
-	return PopTrue;
+	return Bool (Pop);
 }
 
 sub Parse {
