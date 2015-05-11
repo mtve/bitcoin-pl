@@ -363,6 +363,7 @@ sub ReconnectBlock {
 		if !$blk_best || $blk->{nHeight} > $blk_best->{nHeight};
 
 	D && warn "height $blk->{nHeight} main $blk->{mainBranch} " .
+		"txs ${\scalar @{ $blk->{vtx} } } " .
 		"block $X{$blk->{hash}}";
 
 	if ($blk->{nHeight} != -1) {
