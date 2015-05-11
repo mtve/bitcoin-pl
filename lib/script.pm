@@ -269,7 +269,7 @@ sub Push(@) { push @stack, @_ }
 sub PopN($) { map Pop, 1..$_[0] }
 sub PopNum() { NumDecode (Pop) }
 sub PushNum($) { Push (NumEncode ($_[0])) }
-sub PopTrue() { PopNum == 1 }
+sub PopTrue() { Pop eq chr 1 }
 sub Verify() { PopTrue || die "fail" }
 
 our %Exe; %Exe = (
