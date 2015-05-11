@@ -60,7 +60,7 @@ sub TransactionIncome {
 	my ($tx, $last_tx, $spent) = @_;
 
 	my $sum = 0;
-	my $last = "last_tx: @X{ sort keys %$last_tx }";
+	my $last = ''; # "last_tx: @X{ sort keys %$last_tx }";
 
 	for (0 .. $#{ $tx->{vin} }) {
 		my $prev = $tx->{vin}[$_]{prevout};

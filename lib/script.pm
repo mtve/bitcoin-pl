@@ -7,7 +7,7 @@ use util;
 use base58;
 use ripemd160;
 
-sub DebugStop()  { $main::PROB_CHECKSIG = .001 }
+sub DebugStop()  { $main::PROB_CHECKSIG = .0001 }
 sub DebugStart() { $main::PROB_CHECKSIG = 1 }
 
 our %SIGHASH = (

@@ -87,7 +87,7 @@ sub state_msg {
 	}
 	event::timer_reset ($file->{timer_inact});
 
-	D && warn "debug msg " . unpack ('H*', $msg);
+	0 && warn "debug msg " . unpack ('H*', $msg);
 	my $str = serialize::Unserialize ($file->{net_func}, $msg);
 	0 && warn "debug $file->{net_func} " .
 		serialize::Dump ($file->{net_func}, $str);
