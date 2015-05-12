@@ -63,7 +63,7 @@ sub TransactionIncome {
 	my $last = ''; # "last_tx: @X{ sort keys %$last_tx }";
 
 	for (0 .. $#{ $tx->{vin} }) {
-		my $prev = $tx->{vin}[$_]{prevout};
+		my $prev = $tx->{vin}[$_]{prevout} or die;
 		my $txFrom_h = $prev->{hash};
 		die "prevout is null" if $txFrom_h eq $chain::NULL256;
 		my $nOut = $prev->{n};
@@ -115,8 +115,7 @@ sub CheckTransaction {
 		if !@{ $tx->{vin} } || !@{ $tx->{vout} };
 
 	D && warn "$X{$tx->{hash}}";
-use Data::Dumper;
-	D && warn "xxx " . Dumper ($tx);
+	D && warn "xxx " . serialize::Dump ('CTransaction', $tx);
 
 	my ($out, $in, $fee);
 	if (IsCoinBase ($tx)) {
