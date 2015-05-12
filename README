@@ -6,7 +6,7 @@ Status:
 Usage:
  perl bitcoin.pl
 
-For speed it's recommended to place db file on memory filesystem like this:
+For speed try to place db file on memory filesystem like this:
  mount -t tmpfs -o size=10g tmpfs `pwd`/var
  mount -o remount,size=40g tmpfs `pwd`/var
 
