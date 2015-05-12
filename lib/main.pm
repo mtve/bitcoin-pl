@@ -115,6 +115,8 @@ sub CheckTransaction {
 		if !@{ $tx->{vin} } || !@{ $tx->{vout} };
 
 	D && warn "$X{$tx->{hash}}";
+use Data::Dumper;
+	D && warn "xxx " . Dump ($tx);
 
 	my ($out, $in, $fee);
 	if (IsCoinBase ($tx)) {
