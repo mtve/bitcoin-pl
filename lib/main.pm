@@ -331,10 +331,10 @@ sub SwitchBranch {
 		data::blk_connect ($_);
 	}
 	for (@new) {
-		data::blk_load ($_);
-		SpentBlock ($_);
-		$_->{mainBranch} = 1;
-		data::blk_connect ($_);
+		$b = data::blk_load ($_->{hash});
+		SpentBlock ($b);
+		$b->{mainBranch} = 1;
+		data::blk_connect ($b);
 	}
 }
 
@@ -390,7 +390,7 @@ sub ProcessBlock {
 
 	$blk->{nHeight} = -1;
 	$blk->{mainBranch} = 0;
-	data::blk_save ($blk->{hash}, $blk);
+	data::blk_save ($blk);
 
 	ReconnectBlock ($blk);
 

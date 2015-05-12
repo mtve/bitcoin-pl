@@ -252,7 +252,7 @@ sub quit {
 }
 
 sub loop {
-	$SIG{INT} = \&quit;
+	$SIG{INT} = $SIG{HUP} = $SIG{TERM} = \&quit;
 	$SIG{PIPE} = sub { warn "error sigpipe\n" };
 	warn "started\n";
 	loop_one () while !$quit;
