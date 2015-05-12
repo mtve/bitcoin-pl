@@ -116,7 +116,7 @@ sub CheckTransaction {
 
 	D && warn "$X{$tx->{hash}}";
 use Data::Dumper;
-	D && warn "xxx " . Dump ($tx);
+	D && warn "xxx " . Dumper ($tx);
 
 	my ($out, $in, $fee);
 	if (IsCoinBase ($tx)) {
