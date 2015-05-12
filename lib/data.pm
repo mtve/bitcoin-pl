@@ -20,9 +20,7 @@ CREATE TABLE IF NOT EXISTS key (
 CREATE TABLE IF NOT EXISTS tx (
 	hash		BLOB(32) PRIMARY KEY,
 	nLockTime	INTEGER NOT NULL,
-	mainHeight	INTEGER NOT NULL,	-- not in main chain -1
-	in_c		INTEGER NOT NULL,
-	out_c		INTEGER NOT NULL
+	mainHeight	INTEGER NOT NULL	-- not in main chain -1
 );
 
 CREATE INDEX IF NOT EXISTS tx_idx1 ON tx (mainHeight);
@@ -59,8 +57,7 @@ CREATE TABLE IF NOT EXISTS blk (
 	nBits		INTEGER NOT NULL,
 	nNonce		INTEGER NOT NULL,
 	nHeight		INTEGER NOT NULL,	-- orphan -1
-	mainBranch	INTEGER NOT NULL,
-	tx_c		INTEGER NOT NULL
+	mainBranch	INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS blk_idx1 ON blk (nHeight);
@@ -253,15 +250,13 @@ SQL
 sub tx_save {
 	my ($tx_h, $tx) = @_;
 
-	my $in_c  = @{ $tx->{vin} };
-	my $out_c = @{ $tx->{vout} };
-	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime}, -1, $in_c, $out_c);
-	for (0 .. $in_c - 1) {
+	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime}, -1);
+	for (0 .. $#{ $tx->{vin} }) {
 		my $i = $tx->{vin}[$_];
 		$sth{tx_in_ins}->execute ($tx_h, $_, $i->{prevout}{hash},
 		    $i->{prevout}{n}, $i->{scriptSig}, $i->{nSequence});
 	}
-	for (0 .. $out_c - 1) {
+	for (0 .. $#{ $tx->{vout} }) {
 		my $i = $tx->{vout}[$_];
 		$sth{tx_out_ins}->execute ($tx_h, $_, @$i{qw (
 			nValue scriptPubKey addr spentHeight
@@ -272,10 +267,12 @@ sub tx_save {
 sub tx_load {
 	my ($tx_h) = @_;
 
-	my $tx = tx_exists ($tx_h) or return;
+	$sth{tx_sel}->execute ($tx_h);
+	my $h = $sth{tx_sel}->fetchrow_hashref or return;
+	my $tx = $h;
 
 	$sth{tx_in_sel}->execute ($tx_h);
-	while (my $h = $sth{tx_in_sel}->fetchrow_hashref) {
+	while ($h = $sth{tx_in_sel}->fetchrow_hashref) {
 		$tx->{vin}[ $h->{tx_n} ] = {
 			prevout		=> {
 				hash		=> $h->{prev_hash},
@@ -286,14 +283,14 @@ sub tx_load {
 		};
 	}
 	$tx->{vin}[$_] or die "no tx_in $_ for tx $X{$tx_h}"
-		for 0 .. $tx->{in_c} - 1;
+		for 0 .. $#{ $tx->{vin} };
 
 	$sth{tx_out_sel}->execute ($tx_h);
-	while (my $h = $sth{tx_out_sel}->fetchrow_hashref) {
+	while ($h = $sth{tx_out_sel}->fetchrow_hashref) {
 		$tx->{vout}[ $h->{tx_n} ] = $h;
 	}
 	$tx->{vout}[$_] or die "no tx_out $_ for tx $X{$tx_h}"
-		for 0 .. $tx->{out_c} - 1;
+		for 0 .. $#{ $tx->{vout} };
 
 	$tx->{nVersion} = 1;
 
@@ -314,33 +311,29 @@ sub tx_trimmain {
 }
 
 sub blk_save {
-	my ($blk) = @_;
+	my ($blk_h, $blk) = @_;
 
-	my $blk_h = $blk->{hash};
-	$blk->{tx_c} = scalar @{ $blk->{vtx_h} };
-	$sth{blk_ins}->execute (@$blk{qw(
-		hash hashPrevBlock nTime nBits nNonce nHeight mainBranch tx_c
+	$sth{blk_ins}->execute ($blk_h, @$blk{qw(
+		hashPrevBlock nTime nBits nNonce nHeight mainBranch
 	)});
-	for (0 .. $blk->{tx_c} - 1) {
+	for (0 .. $#{ $blk->{vtx_h} }) {
 		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx_h}[$_]);
 	}
 }
 
 sub blk_load {
-	my ($blk_h) = @_;
+	my ($blk) = @_;
 
-	my $blk = blk_exists ($blk_h) or die;
-	$sth{blk_tx_sel}->execute ($blk_h);
+	$sth{blk_tx_sel}->execute ($blk->{hash});
 	while (my $h = $sth{blk_tx_sel}->fetchrow_hashref) {
 		$blk->{vtx_h}[ $h->{blk_n} ] = $h->{tx_hash};
 	}
-	for (0 .. $blk->{tx_c} - 1) {
+	for (0 .. $#{ $blk->{vtx_h} }) {
 		my $tx_h = $blk->{vtx_h}[$_] ||
-			die "no blk_tx $_ for blk $X{$blk_h}";
+			die "no blk_tx $_ for blk $X{$blk->{hash}}";
 		$blk->{vtx}[$_] = tx_load ($tx_h)
-			or die "no tx $X{$tx_h} which is $_ in blk $X{$blk_h}";
+			or die "no tx $X{$tx_h} for blk $X{$blk->{hash}} at $_";
 	}
-	return $blk;
 }
 
 sub blk_genesis {
@@ -360,6 +353,7 @@ sub blk_connect {
 
 	$sth{blk_connect}->execute (@$blk{qw( nHeight mainBranch hash )});
 
+	# XXX update
 	if ($blk->{mainBranch}) {
 		$sth{tx_main}->execute ($blk->{nHeight}, $_)
 			for @{ $blk->{vtx_h} };

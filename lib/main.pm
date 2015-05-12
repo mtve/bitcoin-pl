@@ -331,10 +331,10 @@ sub SwitchBranch {
 		data::blk_connect ($_);
 	}
 	for (@new) {
-		$b = data::blk_load ($_->{hash});
-		SpentBlock ($b);
-		$b->{mainBranch} = 1;
-		data::blk_connect ($b);
+		data::blk_load ($_);
+		SpentBlock ($_);
+		$_->{mainBranch} = 1;
+		data::blk_connect ($_);
 	}
 }
 
