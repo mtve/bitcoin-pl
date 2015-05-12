@@ -6,6 +6,7 @@ use DBI;
 
 use event;
 use cfg;
+use util;
 
 my $SCRIPT = <<SQL;
 
@@ -281,11 +282,15 @@ sub tx_load {
 			nSequence	=> $h->{nSequence},
 		};
 	}
+	$tx->{vin}[$_] or die "no tx_in $_ for tx $X{$tx_h}"
+		for 0 .. $#{ $tx->{vin} };
 
 	$sth{tx_out_sel}->execute ($tx_h);
 	while ($h = $sth{tx_out_sel}->fetchrow_hashref) {
 		$tx->{vout}[ $h->{tx_n} ] = $h;
 	}
+	$tx->{vout}[$_] or die "no tx_out $_ for tx $X{$tx_h}"
+		for 0 .. $#{ $tx->{vout} };
 
 	$tx->{nVersion} = 1;
 
@@ -323,9 +328,11 @@ sub blk_load {
 	while (my $h = $sth{blk_tx_sel}->fetchrow_hashref) {
 		$blk->{vtx_h}[ $h->{blk_n} ] = $h->{tx_hash};
 	}
-
-	$blk->{vtx}[$_] = tx_load ($blk->{vtx_h}[$_])
-		for 0..$#{ $blk->{vtx_h} };
+	for (0 .. $#{ $blk->{vtx_h} }) {
+		my $tx_h = $blk->{vtx_h}[$_] ||
+			die "no blk_tx $_ for blk $X{$blk->{hash}}";
+		$blk->{vtx}[$_] = tx_load ($tx_h);
+	}
 }
 
 sub blk_genesis {

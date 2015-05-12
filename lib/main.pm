@@ -115,7 +115,6 @@ sub CheckTransaction {
 		if !@{ $tx->{vin} } || !@{ $tx->{vout} };
 
 	D && warn "$X{$tx->{hash}}";
-	D && warn "xxx " . serialize::Dump ('CTransaction', $tx);
 
 	my ($out, $in, $fee);
 	if (IsCoinBase ($tx)) {
