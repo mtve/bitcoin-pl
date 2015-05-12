@@ -286,14 +286,15 @@ warn "xxx $X{$tx_h} in $h->{tx_n}";
 			nSequence	=> $h->{nSequence},
 		};
 	}
-	$tx->{vin}[$_] or die "no tx_in $_ for tx $X{$tx_h}"
-		for 0 .. $#{ $tx->{vin} };
 
 	$sth{tx_out_sel}->execute ($tx_h);
 	while (my $h = $sth{tx_out_sel}->fetchrow_hashref) {
 warn "xxx $X{$tx_h} out $h->{tx_n}";
 		$tx->{vout}[ $h->{tx_n} ] = $h;
 	}
+
+	$tx->{vin}[$_] or die "no tx_in $_ for tx $X{$tx_h}"
+		for 0 .. $#{ $tx->{vin} };
 	$tx->{vout}[$_] or die "no tx_out $_ for tx $X{$tx_h}"
 		for 0 .. $#{ $tx->{vout} };
 
