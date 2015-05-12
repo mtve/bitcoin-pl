@@ -311,13 +311,13 @@ sub tx_trimmain {
 }
 
 sub blk_save {
-	my ($blk_h, $blk) = @_;
+	my ($blk) = @_;
 
-	$sth{blk_ins}->execute ($blk_h, @$blk{qw(
-		hashPrevBlock nTime nBits nNonce nHeight mainBranch
+	$sth{blk_ins}->execute (@$blk{qw(
+		hash hashPrevBlock nTime nBits nNonce nHeight mainBranch
 	)});
 	for (0 .. $#{ $blk->{vtx_h} }) {
-		$sth{blk_tx_ins}->execute ($blk_h, $_, $blk->{vtx_h}[$_]);
+		$sth{blk_tx_ins}->execute ($blk->{hash}, $_, $blk->{vtx_h}[$_]);
 	}
 }
 
