@@ -39,10 +39,11 @@ sub page_sql {
 	if ($sql) {
 		warn "executing $sql";
 		my @param;
-		$sql =~ s/\b(([0-9a-f]{2})+)\b/
+		my $prep = $sql;
+		$prep =~ s/\b(([0-9a-f]{2})+)\b/
 			push @param, $util::h2b{$1}; "?"
-		/eg;
-		my $res = eval { data::sql ($sql, @param) };
+		/ieg;
+		my $res = eval { data::sql ($prep, @param) };
 		if ($@) {
 			$html = <<HTML;
 <p><font color="#FF0000">Error: $util::hesc{$@}</font></p>
