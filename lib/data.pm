@@ -250,7 +250,7 @@ SQL
 sub tx_save {
 	my ($tx_h, $tx) = @_;
 
-warn "xxx $X{$tx_h}";
+warn "xxx $X{$tx_h} $#{ $tx->{vin} } $#{ $tx->{vout} }";
 	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime}, -1);
 	for (0 .. $#{ $tx->{vin} }) {
 		my $i = $tx->{vin}[$_];
