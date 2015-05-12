@@ -250,15 +250,17 @@ SQL
 sub tx_save {
 	my ($tx_h, $tx) = @_;
 
-warn "xxx $X{$tx_h} $#{ $tx->{vin} } $#{ $tx->{vout} }";
+warn "xxx $X{$tx_h}";
 	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime}, -1);
 	for (0 .. $#{ $tx->{vin} }) {
 		my $i = $tx->{vin}[$_];
+warn "xxx in $_";
 		$sth{tx_in_ins}->execute ($tx_h, $_, $i->{prevout}{hash},
 		    $i->{prevout}{n}, $i->{scriptSig}, $i->{nSequence});
 	}
 	for (0 .. $#{ $tx->{vout} }) {
 		my $i = $tx->{vout}[$_];
+warn "xxx out $_";
 		$sth{tx_out_ins}->execute ($tx_h, $_, @$i{qw (
 			nValue scriptPubKey addr spentHeight
 		)});
@@ -274,6 +276,7 @@ warn "xxx $X{$tx_h}";
 
 	$sth{tx_in_sel}->execute ($tx_h);
 	while (my $h = $sth{tx_in_sel}->fetchrow_hashref) {
+warn "xxx in $h->{tx_n}";
 		$tx->{vin}[ $h->{tx_n} ] = {
 			prevout		=> {
 				hash		=> $h->{prev_hash},
@@ -288,6 +291,7 @@ warn "xxx $X{$tx_h}";
 
 	$sth{tx_out_sel}->execute ($tx_h);
 	while (my $h = $sth{tx_out_sel}->fetchrow_hashref) {
+warn "xxx out $h->{tx_n}";
 		$tx->{vout}[ $h->{tx_n} ] = $h;
 	}
 	$tx->{vout}[$_] or die "no tx_out $_ for tx $X{$tx_h}"
