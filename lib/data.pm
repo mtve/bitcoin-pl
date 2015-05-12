@@ -253,9 +253,6 @@ sub tx_save {
 	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime}, -1);
 	for (0 .. $#{ $tx->{vin} }) {
 		my $i = $tx->{vin}[$_];
-warn "insert into tx_in(tx_hash,tx_n,prev_hash,prev_n,scriptSig,nSequence) " .
-    "values($X{$tx_h},$_,$X{$i->{prevout}{hash}},$i->{prevout}{n}," .
-    "$X{$i->{scriptSig}},$i->{nSequence});";
 		$sth{tx_in_ins}->execute ($tx_h, $_, $i->{prevout}{hash},
 		    $i->{prevout}{n}, $i->{scriptSig}, $i->{nSequence});
 	}
