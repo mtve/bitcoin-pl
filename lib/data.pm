@@ -250,6 +250,7 @@ SQL
 sub tx_save {
 	my ($tx_h, $tx) = @_;
 
+warn "xxx $X{$tx_h}";
 	$sth{tx_ins}->execute ($tx_h, $tx->{nLockTime}, -1);
 	for (0 .. $#{ $tx->{vin} }) {
 		my $i = $tx->{vin}[$_];
@@ -267,12 +268,12 @@ sub tx_save {
 sub tx_load {
 	my ($tx_h) = @_;
 
+warn "xxx $X{$tx_h}";
 	$sth{tx_sel}->execute ($tx_h);
-	my $h = $sth{tx_sel}->fetchrow_hashref or return;
-	my $tx = $h;
+	my $tx = $sth{tx_sel}->fetchrow_hashref or return;
 
 	$sth{tx_in_sel}->execute ($tx_h);
-	while ($h = $sth{tx_in_sel}->fetchrow_hashref) {
+	while (my $h = $sth{tx_in_sel}->fetchrow_hashref) {
 		$tx->{vin}[ $h->{tx_n} ] = {
 			prevout		=> {
 				hash		=> $h->{prev_hash},
@@ -286,7 +287,7 @@ sub tx_load {
 		for 0 .. $#{ $tx->{vin} };
 
 	$sth{tx_out_sel}->execute ($tx_h);
-	while ($h = $sth{tx_out_sel}->fetchrow_hashref) {
+	while (my $h = $sth{tx_out_sel}->fetchrow_hashref) {
 		$tx->{vout}[ $h->{tx_n} ] = $h;
 	}
 	$tx->{vout}[$_] or die "no tx_out $_ for tx $X{$tx_h}"

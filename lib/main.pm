@@ -157,7 +157,6 @@ sub AddTransaction {
 	D && warn "add tx $X{$tx->{hash}}";
 	if (!data::tx_exists ($tx->{hash})) {
 		TransactionFixOutAddr ($tx);
-use Data::Dumper; warn "xxx " . Dumper ($tx);
 		data::tx_save ($tx->{hash}, $tx);
 	}
 }
