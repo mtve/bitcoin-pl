@@ -16,7 +16,7 @@ use cfg;
 our $VERSION = '150508';
 
 print "welcome to bitcoin-pl v$VERSION\n";
-cfg::load ();
+cfg::load ($ARGV[0]);
 data::init ();
 main::init ();
 web::init ();

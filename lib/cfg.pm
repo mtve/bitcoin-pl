@@ -3,8 +3,6 @@ package cfg;
 use warnings;
 use strict;
 
-my $NAME = 'bitcoin-pl.conf';
-
 our %C = (
 	CHAIN			=> 'main',
 
@@ -33,7 +31,11 @@ sub cfg::var::FETCH { exists $C{$_[1]} ? $C{$_[1]} : die "no cfg var $_[1]" }
 tie our %var, 'cfg::var';
 
 sub load {
-	if (open my $f, $NAME) {
+	my ($name) = @_;
+
+	if ($name) {
+		open my $f, $name
+			or die "open $name: $!";
 		while (<$f>) {
 			next if /^[;#\*]|^\s*$/;
 			/^\s*(\S*)\s*=\s*(.*?)\s*$/
@@ -42,7 +44,7 @@ sub load {
 			warn "info \U$1\E = $2\n";
 		}
 	} else {
-		warn "no configuration file $NAME, using defaults\n";
+		warn "no configuration file, using defaults\n";
 	}
 }
 
