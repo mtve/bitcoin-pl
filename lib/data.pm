@@ -329,7 +329,7 @@ sub blk_save {
 sub blk_load {
 	my ($blk_h) = @_;
 
-	my $blk = blk_exists ($blk_h);
+	my $blk = blk_exists ($blk_h) or die;
 	$sth{blk_tx_sel}->execute ($blk_h);
 	while (my $h = $sth{blk_tx_sel}->fetchrow_hashref) {
 		$blk->{vtx_h}[ $h->{blk_n} ] = $h->{tx_hash};
