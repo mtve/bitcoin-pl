@@ -1,7 +1,6 @@
-Bitcoin implemented in perl, meant to be portable.
-
-Status:
- Work in progress.
+About
+=====
+BitCoin implemented in perl, meant to be portable.
 
 Usage:
  perl bitcoin.pl
