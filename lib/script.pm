@@ -369,8 +369,8 @@ sub checksig {
 }
 
 sub checkmultisig {
-	my @pub = PopN (NumDecode (Pop)) or die "no pubkeys";
-	my @sig = PopN (NumDecode (Pop)) or die "no sigs";
+	my @pub = PopN (PopNum) or die "no pubkeys";
+	my @sig = PopN (PopNum) or die "no sigs";
 
 	while (@sig) {
 		if (checksig ($sig[0], $pub[0])) {
