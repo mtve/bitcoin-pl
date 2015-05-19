@@ -312,7 +312,8 @@ our %Exe; %Exe = (
 	#OP_2SWAP
 
 	#OP_IF OP_NOTIF OP_ELSE OP_ENDIF
-	#OP_SIZE
+
+	OP_SIZE		=> sub { DebugStart; PushNum (length Pop) }
 );
 
 our ($a, $b); # localized
