@@ -66,6 +66,51 @@ sub EncodeBase58 {
 
 sub mod { int $_[0] % 2**32 }
 sub ror { my ($v, $r) = @_; $v >> $r | $v << 32 - $r }
+sub rol { my ($v, $r) = @_; ($v & (1 << 32 - $r) - 1) << $r | $v >> 32 - $r }
+
+our @sha1_k = map { int (2 ** 30 * sqrt) } 2, 3, 5, 10;
+
+sub sha1_ {
+	my ($s) = @_;
+	my @h = (0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0);
+	my @s = unpack 'N*', pack 'a*Bx8x!64X4N', $s, 1, 8 * length $s;
+
+	for (0 .. $#s / 16) {
+		my @w = @s[$_ * 16 .. $_ * 16 + 15];
+
+		for my $i (16 .. 79) {
+			$w[$i] = rol ($w[$i - 3] ^ $w[$i - 8] ^
+			     $w[$i - 14] ^ $w[$i - 16], 1);
+		}
+
+		my ($a, $b, $c, $d, $e) = @h;
+
+		for my $i (0 .. 79) {
+			my $f = $i < 20 ? $b & $c | ~$b & $d :
+				$i < 40 ? $b ^ $c ^ $d :
+				$i < 60 ? $b & $c | $b & $d | $c & $d :
+					$b ^ $c ^ $d;
+			my $t = mod (rol ($a, 5) + $f + $e + $sha1_k[$i / 20]
+				+ $w[$i]);
+			$e = $d;
+			$d = $c;
+			$c = rol ($b, 30);
+			$b = $a;
+			$a = $t;
+		}
+		$h[0] = mod ($h[0] + $a);
+		$h[1] = mod ($h[1] + $b);
+		$h[2] = mod ($h[2] + $c);
+		$h[3] = mod ($h[3] + $d);
+		$h[4] = mod ($h[4] + $e);
+	}
+	return pack 'N*', @h;
+}
+
+sha1_ ("") eq pack 'H*',
+	'da39a3ee5e6b4b0d3255bfef95601890afd80709' or die "die sha1";
+sha1_ ("The quick brown fox jumps over the lazy dog") eq pack 'H*',
+	'2fd4e1c67a2d28fced849ee1bb76e7391b93eb12' or die "bad sha1";
 
 my @primes = grep { my $c = $_; !grep $c % $_ == 0, 2 .. $c - 1 } 2 .. 311;
 my @init = map mod (2**32 * sqrt), @primes[0..7];
@@ -125,7 +170,7 @@ sha256_ ('') eq pack 'H*',
 
 eval { require Digest::SHA };
 *sha256 = $@ ? \&sha256_ : \&Digest::SHA::sha256;
-*sha1 = $@ ? die "sha1 is not implemented" : \&Digest::SHA::sha1;
+*sha1 = $@ ? \&sha1_ : \&Digest::SHA::sha1;
 
 sub Hash { sha256 (sha256 ($_[0])) }
 

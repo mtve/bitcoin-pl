@@ -6,9 +6,13 @@ Status:
 Usage:
  perl bitcoin.pl
 
-For speed try to place db file on memory filesystem like this:
- mount -t tmpfs -o size=10g tmpfs `pwd`/var
- mount -o remount,size=40g tmpfs `pwd`/var
+Note:
+ For speed try to place db file on memory filesystem like this:
+   mount -t tmpfs -o size=10g tmpfs /.1
+   mount -o remount,size=40g tmpfs /.1
+ Still it's pathetically slow when DB size is more then RAM, it
+ loads around five blocks per minute when at block number 240000 (summer'13),
+ and it's IO bound.   Need to reconsider the data scheme.
 
 Features:
 - web interface
@@ -17,15 +21,15 @@ Features:
 - chain branches
 - key management with confirmed amount and unconfirmed delta
 
-"Do what you want" license.
+License: "Do what you want"
 
-links:
+Links:
  https://en.bitcoin.it/wiki/Protocol_specification
  https://github.com/bitcoin/bips
  https://bitcoin.org/en/developer-guide#standard-transactions
  https://bitcoin.org/en/developer-examples#p2sh-multisig
 
-todo:
+Todo:
 . bip11 multisig
 - bip16 strictness
 - bip34 block.nVersion=2 coinbase starts with serialized block height
