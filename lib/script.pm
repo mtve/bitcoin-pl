@@ -262,14 +262,9 @@ sub NumEncode {
 	return $_;
 }
 
-sub Bool {
-	my ($bin) = @_;
-
-	return $bin =~ /[^\x00]/ && $bin !~ /^\x00*\x80\z/;
-}
-
 our (@stack, $checksigCb, $checksigScript); # localized
 
+sub Bool { $_[0] !~ /^\x00*\x80?\z/ }
 sub Pop() { @stack ? pop @stack : die "empty stack" }
 sub Push(@) { push @stack, @_ }
 sub PopN($) { map Pop, 1..$_[0] }
